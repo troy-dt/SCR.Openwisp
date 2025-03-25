@@ -62,8 +62,8 @@ services:
         condition: service_healthy
       influxdb:
         condition: service_healthy
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DJANGO_SECRET_KEY=change_this_key
       - DB_ENGINE=django.contrib.gis.db.backends.postgis
