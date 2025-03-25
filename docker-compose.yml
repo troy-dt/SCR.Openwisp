@@ -106,9 +106,9 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - EMAIL_DJANGO_DEFAULT=admin@example.com
-      - DJANGO_ALLOWED_HOSTS=*
-      - DASHBOARD_DOMAIN=localhost
-      - API_DOMAIN=localhost:8888
+      - DJANGO_ALLOWED_HOSTS=*,192.168.1.38
+      - DASHBOARD_DOMAIN=192.168.1.38:8888
+      - API_DOMAIN=192.168.1.38:8888
       - DJANGO_SETTINGS_MODULE=openwisp.settings
       - SSL_CERT_MODE=False
       - REDIS_CACHE_ENABLED=True
@@ -156,8 +156,9 @@ services:
       - DB_PORT=5432
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - DASHBOARD_DOMAIN=localhost
-      - API_DOMAIN=localhost:8888
+      - DJANGO_ALLOWED_HOSTS=*,192.168.1.38
+      - DASHBOARD_DOMAIN=192.168.1.38:8888
+      - API_DOMAIN=192.168.1.38:8888
       - DJANGO_SETTINGS_MODULE=openwisp.settings
       - SSL_CERT_MODE=False
       - CELERY_BROKER_URL=redis://redis:6379/0
