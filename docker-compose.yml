@@ -61,7 +61,7 @@ services:
         add_header Access-Control-Allow-Methods \"GET, POST, OPTIONS, PUT, DELETE, PATCH\" always;
         add_header Access-Control-Allow-Headers \"Authorization, Content-Type, X-Requested-With\" always;
 
-        if (\$request_method = OPTIONS) {
+        if (\$request_method=\"OPTIONS\") {
             add_header Access-Control-Allow-Origin \"*\";
             add_header Access-Control-Allow-Methods \"GET, POST, OPTIONS, PUT, DELETE, PATCH\";
             add_header Access-Control-Allow-Headers \"Authorization, Content-Type, X-Requested-With\";
