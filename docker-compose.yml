@@ -1,0 +1,158 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:13-3.3
+    environment:
+      - POSTGRES_USER=openwisp
+      - POSTGRES_PASSWORD=openwisp
+      - POSTGRES_DB=openwisp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openwisp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  influxdb:
+    image: influxdb:1.8
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    environment:
+      - INFLUXDB_DB=openwisp
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=openwisp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:1.25-alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - static:/opt/openwisp/static
+      - media:/opt/openwisp/media
+    ports:
+      - "8888:80"
+    depends_on:
+      - dashboard
+    restart: unless-stopped
+
+  dashboard:
+    image: openwisp/openwisp-dashboard:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    expose:
+      - "8000"
+    environment:
+      - DJANGO_SECRET_KEY=change_this_key
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_NAME=openwisp
+      - DB_USER=openwisp
+      - DB_PASS=openwisp
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EMAIL_DJANGO_DEFAULT=admin@example.com
+      - DJANGO_ALLOWED_HOSTS=*
+      - DASHBOARD_DOMAIN=localhost
+      - API_DOMAIN=localhost:8888
+      - DJANGO_SETTINGS_MODULE=openwisp.settings
+      - SSL_CERT_MODE=False
+      - REDIS_CACHE_ENABLED=True
+      - REDIS_CACHE_LOCATION=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - INFLUXDB_HOST=influxdb
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_USER=admin
+      - INFLUXDB_PASSWORD=openwisp
+      - INFLUXDB_DATABASE=openwisp
+      - MONITORING_TIMESERIES_BACKEND=openwisp_monitoring.monitoring.backends.influxdb
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_PASSWORD=admin
+      - DJANGO_SUPERUSER_EMAIL=admin@example.com
+    volumes:
+      - media:/opt/openwisp/media
+      - static:/opt/openwisp/static
+    restart: unless-stopped
+    working_dir: /opt/openwisp
+    command: >
+      bash -c "python manage.py migrate --noinput &&
+               python manage.py collectstatic --noinput &&
+               echo 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser(username=\"admin\", email=\"admin@example.com\", password=\"admin\") if not User.objects.filter(username=\"admin\").exists() else None' | python manage.py shell &&
+               python manage.py runserver 0.0.0.0:8000"
+
+  celery:
+    image: openwisp/openwisp-dashboard:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+      dashboard:
+        condition: service_started
+    environment:
+      - DJANGO_SECRET_KEY=change_this_key
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_NAME=openwisp
+      - DB_USER=openwisp
+      - DB_PASS=openwisp
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DASHBOARD_DOMAIN=localhost
+      - API_DOMAIN=localhost:8888
+      - DJANGO_SETTINGS_MODULE=openwisp.settings
+      - SSL_CERT_MODE=False
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_CACHE_ENABLED=True
+      - REDIS_CACHE_LOCATION=redis://redis:6379/1
+      - C_FORCE_ROOT=true
+      - INFLUXDB_HOST=influxdb
+      - INFLUXDB_PORT=8086
+      - INFLUXDB_USER=admin
+      - INFLUXDB_PASSWORD=openwisp
+      - INFLUXDB_DATABASE=openwisp
+      - MONITORING_TIMESERIES_BACKEND=openwisp_monitoring.monitoring.backends.influxdb
+    volumes:
+      - media:/opt/openwisp/media
+      - static:/opt/openwisp/static
+    restart: unless-stopped
+    working_dir: /opt/openwisp
+    command: celery -A openwisp worker -l INFO
+
+volumes:
+  postgres_data:
+  redis_data:
+  influxdb_data:
+  media:
+  static:
+  celery_state: 
