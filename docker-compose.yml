@@ -44,7 +44,7 @@ services:
   nginx:
     image: nginx:1.25-alpine
     volumes:
-      - ./nginx:/etc/nginx:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - static:/opt/openwisp/static
       - media:/opt/openwisp/media
     ports:
@@ -62,8 +62,8 @@ services:
         condition: service_healthy
       influxdb:
         condition: service_healthy
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     environment:
       - DJANGO_SECRET_KEY=change_this_key
       - DB_ENGINE=django.contrib.gis.db.backends.postgis
