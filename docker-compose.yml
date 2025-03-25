@@ -57,12 +57,16 @@ services:
         server_name localhost;
 
         # CORS configuration
-        add_header Access-Control-Allow-Origin $http_origin always;
+        add_header Access-Control-Allow-Origin \"*\" always;
         add_header Access-Control-Allow-Methods \"GET, POST, OPTIONS, PUT, DELETE, PATCH\" always;
         add_header Access-Control-Allow-Headers \"Authorization, Content-Type, X-Requested-With\" always;
-        add_header Access-Control-Allow-Credentials true always;
 
-        if ($request_method = OPTIONS) {
+        if ($request_method = \"OPTIONS\") {
+            add_header Access-Control-Allow-Origin \"*\";
+            add_header Access-Control-Allow-Methods \"GET, POST, OPTIONS, PUT, DELETE, PATCH\";
+            add_header Access-Control-Allow-Headers \"Authorization, Content-Type, X-Requested-With\";
+            add_header Content-Length 0;
+            add_header Content-Type text/plain;
             return 204;
         }
 
@@ -76,24 +80,12 @@ services:
             alias /opt/openwisp/static/;
             expires 1y;
             add_header Cache-Control \"public\";
-            
-            # CORS for static files
-            add_header Access-Control-Allow-Origin $http_origin always;
-            add_header Access-Control-Allow-Methods \"GET, OPTIONS\" always;
-            add_header Access-Control-Allow-Headers \"Authorization, Content-Type, X-Requested-With\" always;
-            add_header Access-Control-Allow-Credentials true always;
         }
 
         location /media/ {
             alias /opt/openwisp/media/;
             expires 1y;
             add_header Cache-Control \"public\";
-            
-            # CORS for media files
-            add_header Access-Control-Allow-Origin $http_origin always;
-            add_header Access-Control-Allow-Methods \"GET, OPTIONS\" always;
-            add_header Access-Control-Allow-Headers \"Authorization, Content-Type, X-Requested-With\" always;
-            add_header Access-Control-Allow-Credentials true always;
         }
 
         location / {
@@ -105,12 +97,6 @@ services:
             proxy_set_header X-Forwarded-Host $host;
             proxy_set_header X-Forwarded-Port $server_port;
             proxy_redirect off;
-
-            # CORS headers for API
-            add_header Access-Control-Allow-Origin $http_origin always;
-            add_header Access-Control-Allow-Methods \"GET, POST, OPTIONS, PUT, DELETE, PATCH\" always;
-            add_header Access-Control-Allow-Headers \"Authorization, Content-Type, X-Requested-With\" always;
-            add_header Access-Control-Allow-Credentials true always;
         }
       }' > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
 
