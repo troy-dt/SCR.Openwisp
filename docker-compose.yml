@@ -69,8 +69,10 @@ services:
         proxy_read_timeout 600;
         send_timeout 600;
 
-        # Handle OPTIONS requests at the server level
-        if ($request_method ~* OPTIONS) {
+        # Handle OPTIONS requests
+        location = /options-preflight {
+            add_header Content-Type text/plain;
+            add_header Content-Length 0;
             return 204;
         }
 
