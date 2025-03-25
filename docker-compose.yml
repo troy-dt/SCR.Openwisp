@@ -51,31 +51,7 @@ services:
     depends_on:
       - dashboard
     restart: unless-stopped
-    command: >
-      sh -c "cat > /etc/nginx/conf.d/default.conf << 'EOL'
-      server {
-        listen 80;
-        server_name localhost;
-
-        client_max_body_size 100M;
-
-        location /static/ {
-            alias /opt/openwisp/static/;
-        }
-
-        location /media/ {
-            alias /opt/openwisp/media/;
-        }
-
-        location / {
-            proxy_pass http://dashboard:8000;
-            proxy_set_header Host $$host;
-            proxy_set_header X-Real-IP $$remote_addr;
-        }
-      }
-      EOL
-      
-      nginx -g 'daemon off;'"
+    command: sh -c "echo 'server { listen 80; server_name localhost; client_max_body_size 100M; location /static/ { alias /opt/openwisp/static/; } location /media/ { alias /opt/openwisp/media/; } location / { proxy_pass http://dashboard:8000; proxy_set_header Host $$host; proxy_set_header X-Real-IP $$remote_addr; } }' > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
 
   dashboard:
     image: openwisp/openwisp-dashboard:latest
