@@ -1,16 +1,16 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const routerRoutes = require('./routes/router.routes');
 const cronJobs = require('./utils/cron');
+const logger = require('./utils/logger');
+const { sequelize } = require('./models');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const DATABASE_URL = process.env.DATABASE_URL || 'mongodb://db:27017/openwisp';
 
 // Middleware
 app.use(cors());
@@ -24,19 +24,20 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// Connect to MongoDB
-mongoose.connect(DATABASE_URL)
+// Connect to database and start server
+sequelize.authenticate()
   .then(() => {
-    console.log('Connected to MongoDB');
+    logger.info('Connected to PostgreSQL database');
     
     // Start the server
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      logger.info(`Server running on port ${PORT}`);
     });
     
     // Start cron jobs
     cronJobs.startAll();
   })
   .catch(err => {
-    console.error('MongoDB connection error:', err);
+    logger.error(`Database connection error: ${err.message}`);
+    process.exit(1);
   }); 

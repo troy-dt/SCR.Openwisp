@@ -1,12 +1,12 @@
-const Router = require('../models/router.model');
-const Metric = require('../models/metric.model');
+const { Router, Metric } = require('../models');
 const sshClient = require('../utils/ssh');
 const cronJobs = require('../utils/cron');
+const { Op } = require('sequelize');
 
 // Get all routers
 exports.getAllRouters = async (req, res) => {
   try {
-    const routers = await Router.find();
+    const routers = await Router.findAll();
     res.status(200).json(routers);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -16,7 +16,7 @@ exports.getAllRouters = async (req, res) => {
 // Get a router by ID
 exports.getRouterById = async (req, res) => {
   try {
-    const router = await Router.findById(req.params.id);
+    const router = await Router.findByPk(req.params.id);
     if (!router) {
       return res.status(404).json({ message: 'Router not found' });
     }
@@ -29,8 +29,26 @@ exports.getRouterById = async (req, res) => {
 // Create a new router
 exports.createRouter = async (req, res) => {
   try {
-    const router = new Router(req.body);
-    await router.save();
+    // If hostname is not provided, use IP address temporarily
+    if (!req.body.hostname) {
+      req.body.hostname = req.body.ipAddress;
+    }
+    
+    // Create the router in the database
+    const router = await Router.create(req.body);
+    
+    // After creating, try to fetch the real hostname
+    try {
+      const hostname = await sshClient.fetchHostname(router);
+      if (hostname) {
+        router.hostname = hostname;
+        await router.save();
+      }
+    } catch (hostnameError) {
+      // Just log the error but don't fail the whole request
+      console.error('Error fetching hostname:', hostnameError);
+    }
+    
     res.status(201).json(router);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -40,17 +58,41 @@ exports.createRouter = async (req, res) => {
 // Update a router
 exports.updateRouter = async (req, res) => {
   try {
-    const router = await Router.findByIdAndUpdate(
-      req.params.id, 
-      req.body, 
-      { new: true, runValidators: true }
-    );
+    // Get the router
+    const router = await Router.findByPk(req.params.id);
     
     if (!router) {
       return res.status(404).json({ message: 'Router not found' });
     }
     
-    res.status(200).json(router);
+    // Update the router in the database
+    const [updated] = await Router.update(req.body, {
+      where: { id: req.params.id },
+      returning: true
+    });
+    
+    if (updated === 0) {
+      return res.status(404).json({ message: 'Router not found' });
+    }
+    
+    // Reload the router with updated data
+    const updatedRouter = await Router.findByPk(req.params.id);
+    
+    // If IP address was updated, try to fetch the hostname
+    if (req.body.ipAddress && (!req.body.hostname || req.body.hostname === router.hostname)) {
+      try {
+        const hostname = await sshClient.fetchHostname(updatedRouter);
+        if (hostname) {
+          updatedRouter.hostname = hostname;
+          await updatedRouter.save();
+        }
+      } catch (hostnameError) {
+        // Just log the error but don't fail the whole request
+        console.error('Error fetching hostname:', hostnameError);
+      }
+    }
+    
+    res.status(200).json(updatedRouter);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -59,14 +101,19 @@ exports.updateRouter = async (req, res) => {
 // Delete a router
 exports.deleteRouter = async (req, res) => {
   try {
-    const router = await Router.findByIdAndDelete(req.params.id);
+    const router = await Router.findByPk(req.params.id);
     
     if (!router) {
       return res.status(404).json({ message: 'Router not found' });
     }
     
     // Delete all associated metrics
-    await Metric.deleteMany({ routerId: req.params.id });
+    await Metric.destroy({
+      where: { routerId: req.params.id }
+    });
+    
+    // Delete the router
+    await router.destroy();
     
     res.status(200).json({ message: 'Router deleted successfully' });
   } catch (error) {
@@ -77,7 +124,7 @@ exports.deleteRouter = async (req, res) => {
 // Test router connection
 exports.testConnection = async (req, res) => {
   try {
-    const router = await Router.findById(req.params.id);
+    const router = await Router.findByPk(req.params.id);
     
     if (!router) {
       return res.status(404).json({ message: 'Router not found' });
@@ -111,32 +158,40 @@ exports.getRouterMetrics = async (req, res) => {
     const { id } = req.params;
     const { limit = 24, timespan = 'day' } = req.query;
     
+    // Check if router exists
+    const router = await Router.findByPk(id);
+    if (!router) {
+      return res.status(404).json({ message: 'Router not found' });
+    }
+    
     let timeFilter = {};
     const now = new Date();
     
     switch (timespan) {
       case 'hour':
-        timeFilter = { timestamp: { $gte: new Date(now - 60 * 60 * 1000) } };
+        timeFilter = { timestamp: { [Op.gte]: new Date(now - 60 * 60 * 1000) } };
         break;
       case 'day':
-        timeFilter = { timestamp: { $gte: new Date(now - 24 * 60 * 60 * 1000) } };
+        timeFilter = { timestamp: { [Op.gte]: new Date(now - 24 * 60 * 60 * 1000) } };
         break;
       case 'week':
-        timeFilter = { timestamp: { $gte: new Date(now - 7 * 24 * 60 * 60 * 1000) } };
+        timeFilter = { timestamp: { [Op.gte]: new Date(now - 7 * 24 * 60 * 60 * 1000) } };
         break;
       case 'month':
-        timeFilter = { timestamp: { $gte: new Date(now - 30 * 24 * 60 * 60 * 1000) } };
+        timeFilter = { timestamp: { [Op.gte]: new Date(now - 30 * 24 * 60 * 60 * 1000) } };
         break;
       default:
-        timeFilter = { timestamp: { $gte: new Date(now - 24 * 60 * 60 * 1000) } };
+        timeFilter = { timestamp: { [Op.gte]: new Date(now - 24 * 60 * 60 * 1000) } };
     }
     
-    const metrics = await Metric.find({ 
-      routerId: id,
-      ...timeFilter
-    })
-    .sort({ timestamp: -1 })
-    .limit(parseInt(limit));
+    const metrics = await Metric.findAll({ 
+      where: { 
+        routerId: id,
+        ...timeFilter
+      },
+      order: [['timestamp', 'DESC']],
+      limit: parseInt(limit)
+    });
     
     res.status(200).json(metrics);
   } catch (error) {

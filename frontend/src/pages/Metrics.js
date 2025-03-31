@@ -20,9 +20,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Button
+  Button,
+  Alert
 } from '@mui/material';
 import { useRouters } from '../context/RouterContext';
+import axios from 'axios';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RouterIcon from '@mui/icons-material/Router';
 import MemoryIcon from '@mui/icons-material/Memory';
@@ -60,6 +62,14 @@ ChartJS.register(
   Filler
 );
 
+// Create axios instance with proper base URL
+const api = axios.create({
+  baseURL: 'http://localhost:5000/api',
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
 const Metrics = () => {
   const { routers, loading, fetchRouters, collectMetrics, fetchRouterMetrics } = useRouters();
   const [selectedRouter, setSelectedRouter] = useState('');
@@ -70,15 +80,24 @@ const Metrics = () => {
   const [error, setError] = useState(null);
   const [metricsConfig, setMetricsConfig] = useState(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [timespan, setTimespan] = useState('day'); // Default to day view
+  const [limit, setLimit] = useState(24); // Default to 24 data points
+
+  // Time period options
+  const timespanOptions = [
+    { value: 'hour', label: 'Last Hour', defaultLimit: 60 },
+    { value: 'day', label: 'Last 24 Hours', defaultLimit: 24 },
+    { value: 'week', label: 'Last Week', defaultLimit: 168 },
+    { value: 'month', label: 'Last Month', defaultLimit: 720 }
+  ];
 
   // Fetch metrics configuration
   useEffect(() => {
     const fetchMetricsConfig = async () => {
       try {
         setLoadingConfig(true);
-        const response = await fetch('/api/routers/metrics/config');
-        const data = await response.json();
-        setMetricsConfig(data);
+        const response = await api.get('/routers/metrics/config');
+        setMetricsConfig(response.data);
       } catch (err) {
         console.error('Error fetching metrics config:', err);
       } finally {
@@ -89,15 +108,18 @@ const Metrics = () => {
     fetchMetricsConfig();
   }, []);
 
-  // Fetch latest metrics when selected router changes
+  // Fetch latest metrics when selected router or timespan changes
   useEffect(() => {
     const fetchMetrics = async () => {
       if (selectedRouter) {
         try {
           setRefreshing(true);
-          const router = routers.find(r => r._id === selectedRouter);
+          const router = routers.find(r => r.id === selectedRouter);
           if (router) {
-            const metricsData = await fetchRouterMetrics(selectedRouter, { limit: 24 });
+            const metricsData = await fetchRouterMetrics(selectedRouter, { 
+              limit: limit,
+              timespan: timespan 
+            });
             setMetrics(metricsData);
           }
           setError(null);
@@ -111,17 +133,28 @@ const Metrics = () => {
     };
 
     fetchMetrics();
-  }, [selectedRouter, fetchRouterMetrics]);
+  }, [selectedRouter, timespan, limit, fetchRouterMetrics]);
 
   // Set first router as selected when routers are loaded
   useEffect(() => {
     if (routers.length > 0 && !selectedRouter) {
-      setSelectedRouter(routers[0]._id);
+      setSelectedRouter(routers[0].id);
     }
   }, [routers, selectedRouter]);
 
   const handleRouterChange = (event) => {
     setSelectedRouter(event.target.value);
+  };
+
+  const handleTimespanChange = (event) => {
+    const newTimespan = event.target.value;
+    setTimespan(newTimespan);
+    
+    // Update limit based on selected timespan
+    const option = timespanOptions.find(opt => opt.value === newTimespan);
+    if (option) {
+      setLimit(option.defaultLimit);
+    }
   };
 
   const handleTabChange = (event, newValue) => {
@@ -133,7 +166,10 @@ const Metrics = () => {
       setRefreshing(true);
       await fetchRouters();
       if (selectedRouter) {
-        const metricsData = await fetchRouterMetrics(selectedRouter, { limit: 24 });
+        const metricsData = await fetchRouterMetrics(selectedRouter, { 
+          limit: limit,
+          timespan: timespan 
+        });
         setMetrics(metricsData);
       }
       setError(null);
@@ -151,7 +187,10 @@ const Metrics = () => {
         setCollectingMetrics(true);
         await collectMetrics(selectedRouter);
         // Refresh metrics after collection
-        const metricsData = await fetchRouterMetrics(selectedRouter, { limit: 24 });
+        const metricsData = await fetchRouterMetrics(selectedRouter, { 
+          limit: limit,
+          timespan: timespan 
+        });
         setMetrics(metricsData);
         setError(null);
       } catch (err) {
@@ -167,23 +206,15 @@ const Metrics = () => {
   const handleUpdateCollectionInterval = async (interval) => {
     try {
       setLoadingConfig(true);
-      const response = await fetch('/api/routers/metrics/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ interval })
-      });
+      const response = await api.post('/routers/metrics/config', { interval });
       
-      const data = await response.json();
-      
-      if (response.ok) {
+      if (response.status === 200) {
         setMetricsConfig(prevConfig => ({
           ...prevConfig,
-          currentInterval: data.currentInterval
+          currentInterval: response.data.currentInterval
         }));
       } else {
-        setError(data.message || 'Failed to update collection interval');
+        setError(response.data.message || 'Failed to update collection interval');
       }
     } catch (err) {
       console.error('Error updating metrics config:', err);
@@ -308,57 +339,86 @@ const Metrics = () => {
     <Box mt={4}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">
-          System Metrics
+          Metrics
         </Typography>
-
-        <Box display="flex" alignItems="center" gap={2}>
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel id="router-select-label">Router</InputLabel>
-            <Select
-              labelId="router-select-label"
-              id="router-select"
-              value={selectedRouter}
-              label="Router"
-              onChange={handleRouterChange}
-              disabled={routers.length === 0}
-            >
-              {routers.map((router) => (
-                <MenuItem key={router._id} value={router._id}>
-                  {router.name} ({router.ipAddress})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
-          
-          <Button
-            variant="contained"
-            startIcon={<RefreshIcon />}
-            onClick={handleCollectMetrics}
-            disabled={collectingMetrics || !selectedRouter}
-          >
-            {collectingMetrics ? 'Collecting...' : 'Collect New Metrics'}
-          </Button>
-        </Box>
       </Box>
 
       {error && (
-        <Box mb={3}>
-          <Typography color="error">{error}</Typography>
-        </Box>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
       )}
 
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={4}>
+            <FormControl fullWidth>
+              <InputLabel id="router-select-label">Router</InputLabel>
+              <Select
+                labelId="router-select-label"
+                id="router-select"
+                value={selectedRouter}
+                label="Router"
+                onChange={handleRouterChange}
+                disabled={loading}
+              >
+                {routers.map((router) => (
+                  <MenuItem key={router.id} value={router.id}>
+                    {router.name} ({router.ipAddress})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={3}>
+            <FormControl fullWidth>
+              <InputLabel id="timespan-select-label">Time Period</InputLabel>
+              <Select
+                labelId="timespan-select-label"
+                id="timespan-select"
+                value={timespan}
+                label="Time Period"
+                onChange={handleTimespanChange}
+                disabled={loading || refreshing}
+              >
+                {timespanOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={5} container spacing={1} justifyContent="flex-end">
+            <Grid item>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={handleRefresh}
+                disabled={loading || refreshing}
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </Grid>
+            <Grid item>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleCollectMetrics}
+                disabled={loading || collectingMetrics}
+              >
+                {collectingMetrics ? 'Collecting...' : 'Collect Metrics Now'}
+              </Button>
+            </Grid>
+          </Grid>
+        </Grid>
+      </Paper>
+
       {metricsConfig && (
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap">
             <Box>
               <Typography variant="subtitle1">
                 Automatic Collection Schedule: 
@@ -371,7 +431,7 @@ const Metrics = () => {
               </Typography>
             </Box>
             
-            <FormControl sx={{ minWidth: 200 }}>
+            <FormControl sx={{ minWidth: 200, mt: { xs: 2, md: 0 } }}>
               <InputLabel id="interval-select-label">Collection Interval</InputLabel>
               <Select
                 labelId="interval-select-label"

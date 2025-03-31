@@ -8,3 +8,7 @@
 [2025-03-31 03:20:17] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
 [2025-03-31 03:22:16] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
 [2025-03-31 03:22:57] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:45:01] ERROR: Database connection error: getaddrinfo ENOTFOUND db
+[2025-03-31 03:45:40] ERROR: Database connection error: getaddrinfo ENOTFOUND db
+[2025-03-31 03:46:58] ERROR: Database connection error: getaddrinfo ENOTFOUND db
+[2025-03-31 03:50:00] ERROR: Error in scheduled metrics collection: relation "Routers" does not exist

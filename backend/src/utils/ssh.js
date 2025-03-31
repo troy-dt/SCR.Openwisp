@@ -469,4 +469,41 @@ const collectWirelessInfo = async (ssh) => {
     logger.error(`Error collecting wireless info: ${error.message}`);
     return 0;
   }
+};
+
+// Fetch hostname from the router
+exports.fetchHostname = async (router) => {
+  try {
+    const ssh = await createSSHClient(router);
+    
+    if (!ssh) {
+      return null;
+    }
+    
+    // Try several methods to get the hostname
+    const commands = [
+      'hostname', // Standard Linux command
+      'cat /proc/sys/kernel/hostname', // Direct from proc filesystem
+      'uci get system.@system[0].hostname' // OpenWrt specific command
+    ];
+    
+    let hostname = null;
+    
+    for (const command of commands) {
+      const result = await ssh.execCommand(command);
+      
+      if (result.code === 0 && result.stdout.trim()) {
+        hostname = result.stdout.trim();
+        break;
+      }
+    }
+    
+    // Disconnect
+    ssh.dispose();
+    
+    return hostname;
+  } catch (error) {
+    logger.error(`Error fetching hostname for router ${router.name || router.ipAddress}: ${error.message}`);
+    return null;
+  }
 }; 

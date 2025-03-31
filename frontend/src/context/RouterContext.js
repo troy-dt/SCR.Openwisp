@@ -75,7 +75,7 @@ export function RouterProvider({ children }) {
       setLoading(true);
       const response = await api.put(`/routers/${id}`, routerData);
       setRouters(routers.map(router => 
-        router._id === id ? response.data : router
+        router.id === id ? response.data : router
       ));
       setError(null);
       return response.data;
@@ -93,7 +93,7 @@ export function RouterProvider({ children }) {
     try {
       setLoading(true);
       await api.delete(`/routers/${id}`);
-      setRouters(routers.filter(router => router._id !== id));
+      setRouters(routers.filter(router => router.id !== id));
       setError(null);
     } catch (err) {
       setError('Failed to delete router. Please try again later.');
@@ -110,7 +110,7 @@ export function RouterProvider({ children }) {
       const response = await api.post(`/routers/${id}/test-connection`);
       // Update router status in the local state
       setRouters(routers.map(router => {
-        if (router._id === id) {
+        if (router.id === id) {
           return {
             ...router,
             status: response.data.success ? 'online' : 'offline',

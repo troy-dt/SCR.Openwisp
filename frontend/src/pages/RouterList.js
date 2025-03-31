@@ -54,7 +54,7 @@ const RouterList = () => {
   const handleConfirmDelete = async () => {
     if (routerToDelete) {
       try {
-        await deleteRouter(routerToDelete._id);
+        await deleteRouter(routerToDelete.id);
         handleCloseDeleteDialog();
       } catch (error) {
         console.error('Error deleting router:', error);
@@ -133,7 +133,7 @@ const RouterList = () => {
           <TableBody>
             {routers.length > 0 ? (
               routers.map((router) => (
-                <TableRow key={router._id}>
+                <TableRow key={router.id}>
                   <TableCell>
                     <Box display="flex" alignItems="center">
                       {getStatusIcon(router.status)}
@@ -156,10 +156,10 @@ const RouterList = () => {
                       <Tooltip title="Test Connection">
                         <IconButton 
                           color="primary"
-                          onClick={() => handleTestConnection(router._id)}
-                          disabled={testing[router._id]}
+                          onClick={() => handleTestConnection(router.id)}
+                          disabled={testing[router.id]}
                         >
-                          {testing[router._id] ? (
+                          {testing[router.id] ? (
                             <CircularProgress size={24} />
                           ) : (
                             <RefreshIcon />
@@ -169,7 +169,7 @@ const RouterList = () => {
                       <Tooltip title="Edit Router">
                         <IconButton 
                           color="primary"
-                          onClick={() => handleEditRouter(router._id)}
+                          onClick={() => handleEditRouter(router.id)}
                         >
                           <EditIcon />
                         </IconButton>

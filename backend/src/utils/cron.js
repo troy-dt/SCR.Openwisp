@@ -1,8 +1,8 @@
 const { CronJob } = require('cron');
-const Router = require('../models/router.model');
-const Metric = require('../models/metric.model');
+const { Router, Metric } = require('../models');
 const sshClient = require('./ssh');
 const logger = require('./logger');
+const { Op } = require('sequelize');
 
 // Available collection intervals (in cron syntax)
 const COLLECTION_INTERVALS = {
@@ -26,7 +26,9 @@ const collectAllMetrics = async () => {
     logger.info('Starting scheduled metrics collection for all routers');
     
     // Get all routers with monitoring enabled
-    const routers = await Router.find({ monitoringEnabled: true });
+    const routers = await Router.findAll({ 
+      where: { monitoringEnabled: true }
+    });
     
     if (routers.length === 0) {
       logger.info('No routers found for monitoring');
@@ -55,13 +57,11 @@ const collectAllMetrics = async () => {
           await router.save();
           
           // Save the metrics
-          const metric = new Metric({
-            routerId: router._id,
+          const metric = await Metric.create({
+            routerId: router.id,
             ...metrics,
             timestamp: new Date()
           });
-          
-          await metric.save();
           
           logger.info(`Successfully collected metrics for router ${router.name}`);
         } catch (error) {
@@ -86,7 +86,7 @@ const cleanupOldMetrics = async () => {
     logger.info('Starting scheduled cleanup of old metrics');
     
     // Get all routers
-    const routers = await Router.find();
+    const routers = await Router.findAll();
     
     if (routers.length === 0) {
       logger.info('No routers found for metrics cleanup');
@@ -102,13 +102,15 @@ const cleanupOldMetrics = async () => {
           cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
           
           // Delete metrics older than the retention period
-          const deleteResult = await Metric.deleteMany({
-            routerId: router._id,
-            timestamp: { $lt: cutoffDate }
+          const deleteResult = await Metric.destroy({
+            where: {
+              routerId: router.id,
+              timestamp: { [Op.lt]: cutoffDate }
+            }
           });
           
-          logger.info(`Cleaned up ${deleteResult.deletedCount} old metrics for router ${router.name} (retention: ${retentionDays} days)`);
-          return deleteResult.deletedCount;
+          logger.info(`Cleaned up ${deleteResult} old metrics for router ${router.name} (retention: ${retentionDays} days)`);
+          return deleteResult;
         } catch (error) {
           logger.error(`Error cleaning up metrics for router ${router.name}: ${error.message}`);
           throw error;

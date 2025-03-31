@@ -127,7 +127,7 @@ const Dashboard = () => {
             
             <Grid container spacing={2}>
               {routers.map((router) => (
-                <Grid item xs={12} sm={6} md={4} key={router._id}>
+                <Grid item xs={12} sm={6} md={4} key={router.id}>
                   <Card variant="outlined">
                     <CardContent>
                       <Box display="flex" alignItems="center">

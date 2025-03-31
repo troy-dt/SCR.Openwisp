@@ -74,11 +74,7 @@ const AddRouter = () => {
       isValid = false;
     }
 
-    // Validate hostname
-    if (!formData.hostname.trim()) {
-      errors.hostname = 'Hostname is required';
-      isValid = false;
-    }
+    // Hostname is optional now, removed validation
 
     // Validate IP address
     if (!formData.ipAddress.trim()) {
@@ -191,11 +187,10 @@ const AddRouter = () => {
               name="hostname"
               label="Hostname"
               fullWidth
-              required
               value={formData.hostname}
               onChange={handleChange}
               error={!!formErrors.hostname}
-              helperText={formErrors.hostname}
+              helperText={formErrors.hostname || "Optional - will be fetched from device automatically"}
               disabled={loading}
             />
           </Grid>

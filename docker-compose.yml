@@ -21,17 +21,21 @@ services:
       - ./backend:/app
       - /app/node_modules
     depends_on:
-      - db
+      - postgres
     environment:
-      - DATABASE_URL=mongodb://db:27017/openwisp
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/openwisp
       - NODE_ENV=development
 
-  db:
-    image: mongo:latest
+  postgres:
+    image: postgres:14
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongodb_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=openwisp
 
 volumes:
-  mongodb_data: 
+  postgres_data: 

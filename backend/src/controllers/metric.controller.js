@@ -1,12 +1,11 @@
-const Metric = require('../models/metric.model');
-const Router = require('../models/router.model');
+const { Router, Metric } = require('../models');
 const sshClient = require('../utils/ssh');
+const { Op } = require('sequelize');
 
 // Create a new metric
 exports.createMetric = async (req, res) => {
   try {
-    const metric = new Metric(req.body);
-    await metric.save();
+    const metric = await Metric.create(req.body);
     res.status(201).json(metric);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -16,22 +15,43 @@ exports.createMetric = async (req, res) => {
 // Get latest metrics for all routers
 exports.getLatestMetrics = async (req, res) => {
   try {
-    const routers = await Router.find({ monitoringEnabled: true });
-    const routerIds = routers.map(router => router._id);
+    const routers = await Router.findAll({
+      where: { monitoringEnabled: true }
+    });
     
-    // For each router, find the latest metric
-    const latestMetrics = await Promise.all(
-      routerIds.map(async (routerId) => {
-        const metric = await Metric.findOne({ routerId })
-          .sort({ timestamp: -1 })
-          .limit(1);
-        
-        return metric;
-      })
-    );
+    if (routers.length === 0) {
+      return res.status(200).json([]);
+    }
     
-    // Filter out null values (routers with no metrics)
-    const filteredMetrics = latestMetrics.filter(metric => metric !== null);
+    const routerIds = routers.map(router => router.id);
+    
+    // Get the latest metric for each router with a subquery
+    const latestMetrics = await Metric.findAll({
+      where: {
+        routerId: { [Op.in]: routerIds }
+      },
+      include: [
+        {
+          model: Router,
+          as: 'router',
+          attributes: ['name', 'hostname', 'ipAddress', 'status']
+        }
+      ],
+      order: [['timestamp', 'DESC']],
+      group: ['Metric.routerId', 'Metric.id', 'router.id']
+    });
+    
+    // Create a map of routerId -> metric for faster lookup
+    const metricMap = new Map();
+    latestMetrics.forEach(metric => {
+      if (!metricMap.has(metric.routerId) || 
+          new Date(metric.timestamp) > new Date(metricMap.get(metric.routerId).timestamp)) {
+        metricMap.set(metric.routerId, metric);
+      }
+    });
+    
+    // Get the final list of latest metrics
+    const filteredMetrics = [...metricMap.values()];
     
     res.status(200).json(filteredMetrics);
   } catch (error) {
@@ -42,7 +62,7 @@ exports.getLatestMetrics = async (req, res) => {
 // Collect metrics for a specific router
 exports.collectMetrics = async (req, res) => {
   try {
-    const router = await Router.findById(req.params.id);
+    const router = await Router.findByPk(req.params.id);
     
     if (!router) {
       return res.status(404).json({ message: 'Router not found' });
@@ -69,13 +89,11 @@ exports.collectMetrics = async (req, res) => {
     await router.save();
     
     // Save the metrics
-    const metric = new Metric({
-      routerId: router._id,
+    const metric = await Metric.create({
+      routerId: router.id,
       ...metrics,
       timestamp: new Date()
     });
-    
-    await metric.save();
     
     res.status(200).json(metric);
   } catch (error) {
@@ -86,25 +104,28 @@ exports.collectMetrics = async (req, res) => {
 // Get metrics summary for dashboard
 exports.getMetricsSummary = async (req, res) => {
   try {
-    const routers = await Router.find();
-    const onlineCount = await Router.countDocuments({ status: 'online' });
-    const offlineCount = await Router.countDocuments({ status: 'offline' });
-    const unknownCount = await Router.countDocuments({ status: 'unknown' });
+    const totalRouters = await Router.count();
+    const onlineRouters = await Router.count({ where: { status: 'online' } });
+    const offlineRouters = await Router.count({ where: { status: 'offline' } });
+    const unknownRouters = await Router.count({ where: { status: 'unknown' } });
     
-    // Get total connected clients across all routers
-    const latestMetrics = await Metric.find()
-      .sort({ timestamp: -1 })
-      .limit(routers.length);
+    // Get the latest metrics for calculating total clients
+    const latestMetrics = await Metric.findAll({
+      limit: totalRouters,
+      order: [['timestamp', 'DESC']],
+      group: ['Metric.routerId', 'Metric.id'],
+      attributes: ['id', 'routerId', 'wirelessClients']
+    });
     
     const totalClients = latestMetrics.reduce((total, metric) => {
       return total + (metric.wirelessClients || 0);
     }, 0);
     
     res.status(200).json({
-      totalRouters: routers.length,
-      onlineRouters: onlineCount,
-      offlineRouters: offlineCount,
-      unknownRouters: unknownCount,
+      totalRouters,
+      onlineRouters,
+      offlineRouters,
+      unknownRouters,
       totalClients
     });
   } catch (error) {

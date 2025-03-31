@@ -70,7 +70,7 @@ const RouterDetail = () => {
 
   useEffect(() => {
     if (routers.length > 0) {
-      const foundRouter = routers.find(r => r._id === id);
+      const foundRouter = routers.find(r => r.id === id);
       setRouter(foundRouter || null);
     }
   }, [id, routers]);

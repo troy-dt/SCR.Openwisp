@@ -32,3 +32,30 @@
 [2025-03-31 03:35:01] INFO: Metrics collection complete. Success: 1, Failed: 0
 [2025-03-31 03:35:08] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
 [2025-03-31 03:35:15] DEBUG: Collected network interface information: [{"name":"br-lan","ipAddress":"192.168.1.38","macAddress":"d8:3a:dd:91:81:15","rxBytes":51844610,"txBytes":35442305,"status":"up"},{"name":"eth0","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":57695149,"txBytes":35869283,"status":"up"},{"name":"lo","ipAddress":"127.0.0.1","macAddress":"00:00:00:00:00:00","rxBytes":96554,"txBytes":96554,"status":"up"},{"name":"wlan0","ipAddress":"","macAddress":"d8:3a:dd:91:81:16","rxBytes":0,"txBytes":0,"status":"down"}]
+[2025-03-31 03:40:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:40:01] DEBUG: Collected network interface information: [{"name":"br-lan","ipAddress":"192.168.1.38","macAddress":"d8:3a:dd:91:81:15","rxBytes":52674342,"txBytes":36443136,"status":"up"},{"name":"eth0","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":58600057,"txBytes":36873192,"status":"up"},{"name":"lo","ipAddress":"127.0.0.1","macAddress":"00:00:00:00:00:00","rxBytes":128930,"txBytes":128930,"status":"up"},{"name":"wlan0","ipAddress":"","macAddress":"d8:3a:dd:91:81:16","rxBytes":0,"txBytes":0,"status":"down"}]
+[2025-03-31 03:40:01] INFO: Successfully collected metrics for router Home
+[2025-03-31 03:40:01] INFO: Metrics collection complete. Success: 1, Failed: 0
+[2025-03-31 03:45:01] ERROR: Database connection error: getaddrinfo ENOTFOUND db
+[2025-03-31 03:45:40] ERROR: Database connection error: getaddrinfo ENOTFOUND db
+[2025-03-31 03:46:58] ERROR: Database connection error: getaddrinfo ENOTFOUND db
+[2025-03-31 03:49:32] INFO: Connected to PostgreSQL database
+[2025-03-31 03:49:32] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
+[2025-03-31 03:49:32] INFO: Server running on port 5000
+[2025-03-31 03:50:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:50:00] ERROR: Error in scheduled metrics collection: relation "Routers" does not exist
+[2025-03-31 03:50:30] INFO: Connected to PostgreSQL database
+[2025-03-31 03:50:31] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
+[2025-03-31 03:50:31] INFO: Server running on port 5000
+[2025-03-31 03:53:02] INFO: Connected to PostgreSQL database
+[2025-03-31 03:53:02] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
+[2025-03-31 03:53:02] INFO: Server running on port 5000
+[2025-03-31 03:54:48] INFO: Connected to PostgreSQL database
+[2025-03-31 03:54:48] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
+[2025-03-31 03:54:48] INFO: Server running on port 5000
+[2025-03-31 03:55:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:55:01] DEBUG: Collected network interface information: [{"name":"br-lan","ipAddress":"192.168.1.38","macAddress":"d8:3a:dd:91:81:15","rxBytes":55242874,"txBytes":39481902,"status":"up"},{"name":"eth0","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":61397023,"txBytes":39921678,"status":"up"},{"name":"lo","ipAddress":"127.0.0.1","macAddress":"00:00:00:00:00:00","rxBytes":231170,"txBytes":231170,"status":"up"},{"name":"wlan0","ipAddress":"","macAddress":"d8:3a:dd:91:81:16","rxBytes":0,"txBytes":0,"status":"down"}]
+[2025-03-31 03:55:01] INFO: Successfully collected metrics for router Home
+[2025-03-31 03:55:01] INFO: Metrics collection complete. Success: 1, Failed: 0
+[2025-03-31 04:00:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 04:00:00] INFO: No routers found for monitoring
