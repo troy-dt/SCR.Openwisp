@@ -1,0 +1,10 @@
+[2025-03-31 03:20:01] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:01] ERROR: Error in metrics collection for router Home: Metric validation failed: diskUsage.total: Cast to Number failed for value "98.3M" (type string) at path "diskUsage.total", diskUsage.free: Cast to Number failed for value "69.7M" (type string) at path "diskUsage.free", diskUsage.used: Cast to Number failed for value "26.6M" (type string) at path "diskUsage.used"
+[2025-03-31 03:20:03] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:08] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:11] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:14] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:16] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:17] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:22:16] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:22:57] ERROR: Error collecting network info: Cannot read properties of null (reading '1')

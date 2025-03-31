@@ -1,0 +1,34 @@
+[2025-03-31 03:05:19] INFO: All cron jobs started
+[2025-03-31 03:08:43] INFO: All cron jobs started
+[2025-03-31 03:10:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:10:00] INFO: No routers found for monitoring
+[2025-03-31 03:15:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:15:00] INFO: No routers found for monitoring
+[2025-03-31 03:20:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:20:01] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:01] ERROR: Error in metrics collection for router Home: Metric validation failed: diskUsage.total: Cast to Number failed for value "98.3M" (type string) at path "diskUsage.total", diskUsage.free: Cast to Number failed for value "69.7M" (type string) at path "diskUsage.free", diskUsage.used: Cast to Number failed for value "26.6M" (type string) at path "diskUsage.used"
+[2025-03-31 03:20:01] INFO: Metrics collection complete. Success: 1, Failed: 0
+[2025-03-31 03:20:03] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:08] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:11] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:14] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:16] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:20:17] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:22:16] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:22:57] ERROR: Error collecting network info: Cannot read properties of null (reading '1')
+[2025-03-31 03:24:27] INFO: All cron jobs started
+[2025-03-31 03:25:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:25:01] INFO: Successfully collected metrics for router Home
+[2025-03-31 03:25:01] INFO: Metrics collection complete. Success: 1, Failed: 0
+[2025-03-31 03:28:09] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
+[2025-03-31 03:30:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:30:01] INFO: Successfully collected metrics for router Home
+[2025-03-31 03:30:01] INFO: Metrics collection complete. Success: 1, Failed: 0
+[2025-03-31 03:33:51] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
+[2025-03-31 03:33:58] DEBUG: Collected network interface information: [{"name":"br-lan","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":51631145,"txBytes":35198639,"status":"up"},{"name":"eth0","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":57464736,"txBytes":35624807,"status":"up"},{"name":"lo","ipAddress":"","macAddress":"00:00:00:00:00:00","rxBytes":88034,"txBytes":88034,"status":"up"},{"name":"wlan0","ipAddress":"","macAddress":"d8:3a:dd:91:81:16","rxBytes":0,"txBytes":0,"status":"down"}]
+[2025-03-31 03:35:00] INFO: Starting scheduled metrics collection for all routers
+[2025-03-31 03:35:01] DEBUG: Collected network interface information: [{"name":"br-lan","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":51801266,"txBytes":35381944,"status":"up"},{"name":"eth0","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":57647117,"txBytes":35808760,"status":"up"},{"name":"lo","ipAddress":"","macAddress":"00:00:00:00:00:00","rxBytes":94850,"txBytes":94850,"status":"up"},{"name":"wlan0","ipAddress":"","macAddress":"d8:3a:dd:91:81:16","rxBytes":0,"txBytes":0,"status":"down"}]
+[2025-03-31 03:35:01] INFO: Successfully collected metrics for router Home
+[2025-03-31 03:35:01] INFO: Metrics collection complete. Success: 1, Failed: 0
+[2025-03-31 03:35:08] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
+[2025-03-31 03:35:15] DEBUG: Collected network interface information: [{"name":"br-lan","ipAddress":"192.168.1.38","macAddress":"d8:3a:dd:91:81:15","rxBytes":51844610,"txBytes":35442305,"status":"up"},{"name":"eth0","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":57695149,"txBytes":35869283,"status":"up"},{"name":"lo","ipAddress":"127.0.0.1","macAddress":"00:00:00:00:00:00","rxBytes":96554,"txBytes":96554,"status":"up"},{"name":"wlan0","ipAddress":"","macAddress":"d8:3a:dd:91:81:16","rxBytes":0,"txBytes":0,"status":"down"}]
