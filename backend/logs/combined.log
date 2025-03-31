@@ -59,3 +59,7 @@
 [2025-03-31 03:55:01] INFO: Metrics collection complete. Success: 1, Failed: 0
 [2025-03-31 04:00:00] INFO: Starting scheduled metrics collection for all routers
 [2025-03-31 04:00:00] INFO: No routers found for monitoring
+[2025-03-31 04:01:19] INFO: Connected to PostgreSQL database
+[2025-03-31 04:01:19] INFO: All cron jobs started. Metrics collection scheduled: */5 * * * *
+[2025-03-31 04:01:19] INFO: Server running on port 5000
+[2025-03-31 04:01:46] DEBUG: Collected network interface information: [{"name":"br-lan","ipAddress":"192.168.1.38","macAddress":"d8:3a:dd:91:81:15","rxBytes":56393725,"txBytes":40878180,"status":"up"},{"name":"eth0","ipAddress":"","macAddress":"d8:3a:dd:91:81:15","rxBytes":62650878,"txBytes":41322330,"status":"up"},{"name":"lo","ipAddress":"127.0.0.1","macAddress":"00:00:00:00:00:00","rxBytes":277178,"txBytes":277178,"status":"up"},{"name":"wlan0","ipAddress":"","macAddress":"d8:3a:dd:91:81:16","rxBytes":0,"txBytes":0,"status":"down"}]
