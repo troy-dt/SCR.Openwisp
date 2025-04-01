@@ -1,0 +1,39 @@
+﻿# Example deployment file
+# Save this as docker-compose.yml on your deployment server
+
+services:
+  frontend:
+    image: docker.io/d1g1talterrain/scr-mesh-frontend:202504020952
+    restart: unless-stopped
+    ports:
+      - "\:80"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - backend
+
+  backend:
+    image: docker.io/d1g1talterrain/scr-mesh-backend:202504020952
+    restart: unless-stopped
+    ports:
+      - "\:5000"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgres://postgres:\@postgres:5432/openwisp
+      - NODE_ENV=production
+
+  postgres:
+    image: postgres:14
+    restart: unless-stopped
+    ports:
+      - "\:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=\
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=openwisp
+
+volumes:
+  postgres_data:

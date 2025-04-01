@@ -6,13 +6,14 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --no-audit --no-fund
+# Install all dependencies for build
+RUN npm ci --no-audit --no-fund
 
 # Copy application code
 COPY . .
 
-# Build the application
+# Set production environment and build
+ENV NODE_ENV=production
 RUN npm run build
 
 # Production stage
@@ -21,8 +22,15 @@ FROM nginx:alpine
 # Copy build artifacts from build stage
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Copy custom nginx config if needed
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Add nginx configuration for SPA routing
+RUN echo 'server { \
+    listen 80; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
 
 # Expose port
 EXPOSE 80

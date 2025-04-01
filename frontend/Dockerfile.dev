@@ -1,0 +1,17 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install --no-audit --no-fund
+
+# No need to copy application code - it will be mounted as a volume
+
+# Expose port
+EXPOSE 3000
+
+# Start development server
+CMD ["npm", "start"] 

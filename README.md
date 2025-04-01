@@ -104,3 +104,60 @@ This feature simplifies router setup and ensures accurate hostname information.
 ## License
 
 MIT 
+
+# SCR-Mesh
+
+## Development Setup
+
+To run the application in development mode:
+
+```bash
+docker-compose up
+```
+
+This will start the application with volume mounts for live code reloading during development.
+
+## Production Deployment
+
+For production deployment, simply use the production docker-compose file:
+
+```bash
+# Set your environment variables
+export POSTGRES_PASSWORD=your_secure_password
+export FRONTEND_PORT=80
+export BACKEND_PORT=5000
+
+# Deploy the stack
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+### Building and Pushing Images
+
+To build and push the Docker images to your registry:
+
+```bash
+# Windows
+.\build-and-push.ps1
+
+# Linux/macOS (if using bash script)
+# ./build-and-push.sh
+```
+
+### Environment Variables
+
+The following environment variables can be set:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| REGISTRY | docker.io | Docker registry |
+| NAMESPACE | d1g1talterrain | Organization/username in registry |
+| TAG | latest | Image tag |
+| FRONTEND_PORT | 80 | Port to expose frontend |
+| BACKEND_PORT | 5000 | Port to expose backend API |
+| POSTGRES_PORT | 5432 | Port to expose PostgreSQL |
+| POSTGRES_PASSWORD | postgres | PostgreSQL password |
+
+## Accessing the Application
+
+- Frontend: http://localhost:${FRONTEND_PORT}
+- Backend API: http://localhost:${BACKEND_PORT}/api 
