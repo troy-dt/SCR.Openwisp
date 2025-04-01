@@ -124,3 +124,7 @@
 [2025-04-01 02:13:00] ERROR: Could not establish SSH connection to 192.168.1.36
 [2025-04-01 02:13:07] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
 [2025-04-01 02:14:00] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:14:37] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:14:46] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:14:46] ERROR: Could not establish SSH connection to 192.168.1.36
+[2025-04-01 02:14:58] ERROR: SSH connection setup error for 192.168.1.36: Invalid username
