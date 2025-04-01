@@ -3,7 +3,7 @@ services:
     build: ./frontend
     image: scr-mesh-frontend:latest
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -16,7 +16,7 @@ services:
     build: ./backend
     image: scr-mesh-backend:latest
     ports:
-      - "5000:5000"
+      - "${BACKEND_PORT:-5000}:5000"
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -29,7 +29,7 @@ services:
   postgres:
     image: postgres:14
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
