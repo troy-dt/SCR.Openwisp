@@ -12,6 +12,11 @@ dotenv.config();
 // Initialize the Express application
 const app = express();
 
+// Favicon handling middleware
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end(); // Return a 204 No Content status if frontend proxy doesn't handle it
+});
+
 // Set up CORS middleware - allow all origins for development
 app.use(cors({
   origin: true, // Allow all origins

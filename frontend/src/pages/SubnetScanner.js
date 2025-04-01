@@ -309,6 +309,10 @@ const SubnetScanner = () => {
     setProgress(100);
     setActiveStep(3);
     
+    // Explicitly set loading to false when results are received
+    setLoading(false);
+    setScanStep('');
+    
     // Check if this is a partial result
     setIsPartialResult(!!data.partialResults || !!data.isPartialResult);
     
@@ -395,27 +399,20 @@ const SubnetScanner = () => {
         ...device,
         username,
         password,
-        name: device.hostname || device.ipAddress
+        name: device.hostname || `Router-${device.ipAddress.replace(/\./g, '-')}`,
+        port: 22,
+        monitoringEnabled: true,
+        metricsRetentionDays: 30
       }));
       
-      // Try direct connection first with fallback to proxy
-      let response;
-      try {
-        console.log('Using direct connection to add routers');
-        console.log('Devices to add:', devicesWithCredentials);
-        
-        response = await directScannerApi.post('/api/scanner/add-multiple', {
-          devices: devicesWithCredentials
-        });
-        console.log('Direct connection succeeded for adding routers');
-      } catch (directError) {
-        console.error('Direct connection failed for adding routers, trying proxy:', directError);
-        
-        response = await scannerApi.post('/api/scanner/add-multiple', {
-          devices: devicesWithCredentials
-        });
-        console.log('Proxy connection succeeded for adding routers');
-      }
+      // Always use direct connection to avoid proxy timeouts
+      console.log('Using direct connection to add routers');
+      console.log('Devices to add:', devicesWithCredentials);
+      
+      const response = await directScannerApi.post('/api/scanner/add-multiple', {
+        devices: devicesWithCredentials
+      });
+      console.log('Direct connection succeeded for adding routers');
       
       console.log('Add multiple response:', response.data);
       
@@ -430,7 +427,7 @@ const SubnetScanner = () => {
       // Also clear devices list to encourage user to scan again
       setDiscoveredDevices([]);
     } catch (err) {
-      console.error('Error adding devices (both direct and proxy failed):', err);
+      console.error('Error adding devices:', err);
       const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Error adding devices';
       setErrorMessage(errorMsg);
       setAlert({
@@ -623,15 +620,19 @@ const SubnetScanner = () => {
                           const data = {
                             ipAddress: device.ipAddress,
                             hostname: device.hostname || 'Unknown Router',
+                            name: device.hostname || `Router-${device.ipAddress.replace(/\./g, '-')}`,
                             macAddress: device.macAddress || `auto-${device.ipAddress.replace(/\./g, '-')}`,
                             username,
-                            password
+                            password,
+                            port: 22,
+                            monitoringEnabled: true,
+                            metricsRetentionDays: 30
                           };
                           
-                          console.log('API call: /api/routers', data);
+                          console.log('API call: Adding router with data:', data);
                           
-                          // Use the main API instance instead of the scanner API
-                          api.post('/api/routers', data)
+                          // Use directScannerApi instead of regular api to bypass proxy timeout issues
+                          directScannerApi.post('/api/routers', data)
                             .then(response => {
                               console.log('Success adding router:', response.data);
                               
