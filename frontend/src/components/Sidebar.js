@@ -18,6 +18,7 @@ import RouterIcon from '@mui/icons-material/Router';
 import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SpeedIcon from '@mui/icons-material/Speed';
+import ScannerIcon from '@mui/icons-material/Scanner';
 
 const drawerWidth = 240;
 
@@ -42,6 +43,11 @@ function Sidebar({ mobileOpen, onDrawerToggle }) {
       text: 'Add Router',
       icon: <AddIcon />,
       path: '/routers/add'
+    },
+    {
+      text: 'Subnet Scanner',
+      icon: <ScannerIcon />,
+      path: '/scanner'
     },
     {
       text: 'Metrics',

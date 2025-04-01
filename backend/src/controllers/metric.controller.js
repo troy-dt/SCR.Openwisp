@@ -1,6 +1,7 @@
 const { Router, Metric } = require('../models');
 const sshClient = require('../utils/ssh');
 const { Op } = require('sequelize');
+const logger = require('../utils/logger');
 
 // Create a new metric
 exports.createMetric = async (req, res) => {
@@ -62,42 +63,100 @@ exports.getLatestMetrics = async (req, res) => {
 // Collect metrics for a specific router
 exports.collectMetrics = async (req, res) => {
   try {
-    const router = await Router.findByPk(req.params.id);
+    const { routerId } = req.params;
     
+    // Handle OPTIONS preflight request
+    if (req.method === 'OPTIONS') {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      return res.status(204).send();
+    }
+    
+    // Add CORS headers
+    res.header('Access-Control-Allow-Origin', '*');
+    
+    // Log the metrics collection attempt for debugging
+    logger.info(`Collecting metrics for router ID ${routerId}`);
+    
+    // Find the router and check if monitoring is enabled
+    const router = await Router.findByPk(routerId);
     if (!router) {
+      logger.error(`Router not found: ${routerId}`);
       return res.status(404).json({ message: 'Router not found' });
     }
     
     if (!router.monitoringEnabled) {
+      logger.warn(`Monitoring is disabled for router ${router.name} (${router.ipAddress})`);
       return res.status(400).json({ message: 'Monitoring is disabled for this router' });
     }
     
-    // Collect metrics via SSH
-    const metrics = await sshClient.collectMetrics(router);
-    
-    if (!metrics) {
+    // First check if the port is open without trying to collect metrics
+    const portOpen = await sshClient.checkPortOpen(router.ipAddress, 22);
+    if (!portOpen) {
+      logger.warn(`Router ${router.ipAddress} is not reachable - SSH port closed`);
+      
       // Update router status to offline
       router.status = 'offline';
       await router.save();
       
-      return res.status(500).json({ message: 'Failed to collect metrics' });
+      return res.status(200).json({ 
+        message: 'Device not reachable, SSH port closed',
+        online: false,
+        metrics: null
+      });
     }
     
-    // Update router status to online
+    // If we got here, the port is open, so the device is reachable
+    // Update the router status immediately to online and last seen timestamp
     router.status = 'online';
     router.lastSeen = new Date();
     await router.save();
     
-    // Save the metrics
-    const metric = await Metric.create({
+    // Now attempt to collect metrics
+    const metrics = await sshClient.collectMetrics(router);
+    
+    // If metrics is null, the SSH connection failed but the device is still online (port is open)
+    if (!metrics) {
+      logger.error(`Failed to collect metrics for router ${router.name} (${router.ipAddress}), but device is reachable`);
+      
+      return res.status(200).json({ 
+        message: 'Device is online but metrics collection failed',
+        online: true,
+        metrics: null
+      });
+    }
+    
+    // Check if there was an error in metrics collection
+    let partialCollection = false;
+    if (metrics.error) {
+      logger.warn(`Partial metrics collection for router ${router.name}: ${metrics.error}`);
+      partialCollection = true;
+    }
+    
+    // Create a new metric with the collected data
+    const newMetric = await Metric.create({
       routerId: router.id,
-      ...metrics,
-      timestamp: new Date()
+      timestamp: new Date(),
+      uptime: metrics.uptime,
+      memoryUsage: metrics.memoryUsage,
+      cpuLoad: metrics.cpuLoad,
+      diskUsage: metrics.diskUsage,
+      networkInterfaces: metrics.networkInterfaces || [],
+      wirelessClients: metrics.wirelessClients || 0
     });
     
-    res.status(200).json(metric);
+    logger.info(`Metrics saved for router ${router.name} (${router.ipAddress})`);
+    
+    // Return the collected metrics
+    return res.status(200).json({ 
+      message: partialCollection ? 'Partial metrics collected' : 'Metrics collected successfully',
+      online: true,
+      metrics: newMetric 
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error(`Error in collectMetrics: ${error.message}`);
+    return res.status(500).json({ message: 'Error collecting metrics', error: error.message });
   }
 };
 

@@ -15,7 +15,7 @@ router.post('/:id/test-connection', routerController.testConnection);
 
 // Metrics routes
 router.get('/:id/metrics', routerController.getRouterMetrics);
-router.post('/:id/collect-metrics', metricController.collectMetrics);
+router.post('/:routerId/collect-metrics', metricController.collectMetrics);
 
 // Metrics summary for dashboard
 router.get('/metrics/summary', metricController.getMetricsSummary);

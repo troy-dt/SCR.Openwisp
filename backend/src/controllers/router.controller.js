@@ -29,6 +29,10 @@ exports.getRouterById = async (req, res) => {
 // Create a new router
 exports.createRouter = async (req, res) => {
   try {
+    // Set initial status
+    req.body.status = 'unknown';
+    req.body.lastSeen = null;
+    
     // If hostname is not provided, use IP address temporarily
     if (!req.body.hostname) {
       req.body.hostname = req.body.ipAddress;
@@ -37,16 +41,38 @@ exports.createRouter = async (req, res) => {
     // Create the router in the database
     const router = await Router.create(req.body);
     
-    // After creating, try to fetch the real hostname
+    // After creating, try to test connection, fetch hostname and MAC address
     try {
-      const hostname = await sshClient.fetchHostname(router);
-      if (hostname) {
-        router.hostname = hostname;
-        await router.save();
+      // First test if we can connect to the router
+      const isConnected = await sshClient.testConnection(router);
+      
+      if (isConnected) {
+        // Update status to online
+        router.status = 'online';
+        router.lastSeen = new Date();
+        
+        // Try to fetch the real hostname and MAC address if connection works
+        const hostname = await sshClient.fetchHostname(router);
+        const macAddress = await sshClient.fetchMacAddress(router);
+        
+        if (hostname) {
+          router.hostname = hostname;
+        }
+        
+        if (macAddress) {
+          router.macAddress = macAddress;
+        }
+      } else {
+        // Update status to offline if connection fails
+        router.status = 'offline';
       }
-    } catch (hostnameError) {
+      
+      await router.save();
+    } catch (error) {
       // Just log the error but don't fail the whole request
-      console.error('Error fetching hostname:', hostnameError);
+      console.error('Error testing connection or fetching router data:', error);
+      router.status = 'offline';
+      await router.save();
     }
     
     res.status(201).json(router);
@@ -78,17 +104,35 @@ exports.updateRouter = async (req, res) => {
     // Reload the router with updated data
     const updatedRouter = await Router.findByPk(req.params.id);
     
-    // If IP address was updated, try to fetch the hostname
-    if (req.body.ipAddress && (!req.body.hostname || req.body.hostname === router.hostname)) {
+    // If IP address was updated, try to fetch the hostname and MAC address
+    if (req.body.ipAddress) {
       try {
-        const hostname = await sshClient.fetchHostname(updatedRouter);
-        if (hostname) {
-          updatedRouter.hostname = hostname;
+        let needsUpdate = false;
+        
+        // Only update hostname if not explicitly provided in the request
+        if (!req.body.hostname || req.body.hostname === router.hostname) {
+          const hostname = await sshClient.fetchHostname(updatedRouter);
+          if (hostname) {
+            updatedRouter.hostname = hostname;
+            needsUpdate = true;
+          }
+        }
+        
+        // Only update MAC address if not explicitly provided in the request
+        if (!req.body.macAddress || req.body.macAddress === router.macAddress) {
+          const macAddress = await sshClient.fetchMacAddress(updatedRouter);
+          if (macAddress) {
+            updatedRouter.macAddress = macAddress;
+            needsUpdate = true;
+          }
+        }
+        
+        if (needsUpdate) {
           await updatedRouter.save();
         }
-      } catch (hostnameError) {
+      } catch (error) {
         // Just log the error but don't fail the whole request
-        console.error('Error fetching hostname:', hostnameError);
+        console.error('Error fetching router data:', error);
       }
     }
     
@@ -130,8 +174,45 @@ exports.testConnection = async (req, res) => {
       return res.status(404).json({ message: 'Router not found' });
     }
     
-    // Test SSH connection
+    // Add CORS headers for testing
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Direct-Connection, Accept, Authorization');
+    
+    // Handle OPTIONS preflight requests
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+    
+    // Log details for debugging
+    console.log(`Testing connection to router: ${router.name} (${router.ipAddress})`);
+    
+    // First try a direct port check
+    const portOpen = await sshClient.checkPortOpen(router.ipAddress, 22);
+    console.log(`Port 22 check for ${router.ipAddress}: ${portOpen ? 'OPEN' : 'CLOSED'}`);
+    
+    // If port is closed, we don't need to try SSH
+    if (!portOpen) {
+      // Update router status to offline
+      router.status = 'offline';
+      await router.save();
+      
+      return res.status(200).json({ 
+        success: false, 
+        message: 'Connection failed: SSH port is not reachable',
+        details: {
+          portOpen: false,
+          sshConnection: false,
+          commandTest: false
+        }
+      });
+    }
+    
+    // Try SSH connection
+    console.log(`Attempting SSH connection to ${router.ipAddress}`);
     const isConnected = await sshClient.testConnection(router);
+    console.log(`SSH connection test for ${router.ipAddress}: ${isConnected ? 'SUCCESS' : 'FAILED'}`);
     
     if (isConnected) {
       // Update router status to online
@@ -139,16 +220,83 @@ exports.testConnection = async (req, res) => {
       router.lastSeen = new Date();
       await router.save();
       
-      res.status(200).json({ success: true, message: 'Connection successful' });
-    } else {
-      // Update router status to offline
-      router.status = 'offline';
-      await router.save();
+      // Try to update hostname and MAC if missing
+      try {
+        let updated = false;
+        
+        if (!router.hostname || router.hostname === router.ipAddress) {
+          const hostname = await sshClient.fetchHostname(router);
+          if (hostname) {
+            router.hostname = hostname;
+            updated = true;
+          }
+        }
+        
+        if (!router.macAddress) {
+          const macAddress = await sshClient.fetchMacAddress(router);
+          if (macAddress) {
+            router.macAddress = macAddress;
+            updated = true;
+          }
+        }
+        
+        if (updated) {
+          console.log(`Updated router info: hostname=${router.hostname}, macAddress=${router.macAddress}`);
+          await router.save();
+        }
+      } catch (error) {
+        console.error(`Error updating router info during connection test: ${error.message}`);
+      }
       
-      res.status(200).json({ success: false, message: 'Connection failed' });
+      res.status(200).json({ 
+        success: true, 
+        message: 'Connection successful',
+        details: {
+          portOpen: true,
+          sshConnection: true,
+          hostname: router.hostname,
+          macAddress: router.macAddress
+        }
+      });
+    } else {
+      // If the port is open but SSH fails, mark as online with limited functionality
+      if (portOpen) {
+        router.status = 'online';
+        router.lastSeen = new Date();
+        await router.save();
+        
+        res.status(200).json({ 
+          success: true, 
+          message: 'Port connection successful but SSH commands failed. Limited functionality available.',
+          details: {
+            portOpen: true,
+            sshConnection: false,
+            commandTest: false
+          }
+        });
+      } else {
+        // Update router status to offline
+        router.status = 'offline';
+        await router.save();
+        
+        res.status(200).json({ 
+          success: false, 
+          message: 'Connection failed',
+          details: {
+            portOpen: false,
+            sshConnection: false,
+            commandTest: false
+          }
+        });
+      }
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(`Error in testConnection controller: ${error.message}`);
+    res.status(500).json({ 
+      success: false, 
+      message: `Error testing connection: ${error.message}`,
+      error: error.message
+    });
   }
 };
 

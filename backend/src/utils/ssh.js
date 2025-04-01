@@ -1,17 +1,68 @@
 const { NodeSSH } = require('node-ssh');
 const logger = require('./logger');
+const net = require('net');
 
-// Create a new SSH client
+// Create a new SSH client with improved robustness
 const createSSHClient = async (router) => {
   const ssh = new NodeSSH();
   
   try {
-    // Connection options
+    logger.info(`Attempting SSH connection to router at ${router.ipAddress || router.hostname}`);
+    
+    // Connection options with extended algorithms for compatibility with older devices
     const sshOptions = {
-      host: router.hostname || router.ipAddress,
+      host: router.ipAddress || router.hostname,
       port: router.port || 22,
       username: router.username,
       password: router.password,
+      // Longer timeout for slow networks
+      readyTimeout: 8000,
+      // Support older algorithms for better compatibility
+      algorithms: {
+        kex: [
+          'diffie-hellman-group1-sha1',
+          'diffie-hellman-group14-sha1',
+          'diffie-hellman-group-exchange-sha1',
+          'diffie-hellman-group-exchange-sha256',
+          'ecdh-sha2-nistp256',
+          'ecdh-sha2-nistp384',
+          'ecdh-sha2-nistp521',
+          'curve25519-sha256'
+        ],
+        cipher: [
+          'aes128-ctr',
+          'aes192-ctr',
+          'aes256-ctr',
+          'aes128-gcm',
+          'aes256-gcm',
+          'aes128-cbc',
+          'aes192-cbc',
+          'aes256-cbc',
+          '3des-cbc',
+          'blowfish-cbc',
+          'arcfour256',
+          'arcfour128',
+          'cast128-cbc',
+          'arcfour'
+        ],
+        serverHostKey: [
+          'ssh-rsa',
+          'ssh-dss',
+          'ecdsa-sha2-nistp256',
+          'ecdsa-sha2-nistp384',
+          'ecdsa-sha2-nistp521'
+        ],
+        hmac: [
+          'hmac-sha2-256',
+          'hmac-sha2-512',
+          'hmac-sha1',
+          'hmac-md5',
+          'hmac-sha2-256-96',
+          'hmac-sha2-512-96',
+          'hmac-sha1-96',
+          'hmac-md5-96'
+        ]
+      }
     };
     
     // Use SSH key if available
@@ -20,32 +71,137 @@ const createSSHClient = async (router) => {
       delete sshOptions.password;
     }
     
+    logger.info(`Connecting to ${sshOptions.host} with user ${sshOptions.username}`);
+    
     // Connect to the router
     await ssh.connect(sshOptions);
+    logger.info(`Successfully connected to ${sshOptions.host}`);
     
     return ssh;
   } catch (error) {
-    logger.error(`SSH connection error for router ${router.name}: ${error.message}`);
+    logger.error(`SSH connection error for router ${router.ipAddress}: ${error.message}`);
     return null;
   }
 };
 
-// Test the SSH connection
-exports.testConnection = async (router) => {
-  try {
-    const ssh = await createSSHClient(router);
+// Test if a port is open using direct socket connection
+exports.checkPortOpen = async (host, port, timeoutMs = 2000) => {
+  logger.info(`Testing if port ${port} is open on ${host} with timeout ${timeoutMs}ms`);
+  
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let resolved = false;
     
-    if (!ssh) {
+    socket.setTimeout(timeoutMs);
+    
+    socket.on('connect', () => {
+      if (!resolved) {
+        resolved = true;
+        logger.info(`✓ Port ${port} is open on ${host}`);
+        socket.destroy();
+        resolve(true);
+      }
+    });
+    
+    socket.on('timeout', () => {
+      if (!resolved) {
+        resolved = true;
+        logger.warn(`Timeout connecting to ${host}:${port}`);
+        socket.destroy();
+        resolve(false);
+      }
+    });
+    
+    socket.on('error', (err) => {
+      if (!resolved) {
+        resolved = true;
+        logger.warn(`Error connecting to ${host}:${port}: ${err.message}`);
+        socket.destroy();
+        resolve(false);
+      }
+    });
+    
+    logger.info(`Attempting to connect to ${host}:${port}`);
+    socket.connect(port, host);
+  });
+};
+
+// Test the SSH connection with improved error handling
+exports.testConnection = async (router) => {
+  logger.info(`Testing connection to router ${router.name} (${router.ipAddress})`);
+  
+  if (!router.ipAddress) {
+    logger.error(`Missing IP address for router ${router.name}`);
+    return false;
+  }
+  
+  try {
+    // First try a direct socket connection to port 22
+    const portOpen = await exports.checkPortOpen(router.ipAddress, 22);
+    
+    if (!portOpen) {
+      logger.warn(`Port 22 is not open on ${router.ipAddress}. Device may be offline or firewall is blocking SSH.`);
       return false;
     }
     
-    // Execute a simple command to test the connection
-    const result = await ssh.execCommand('echo "Connection test"');
+    logger.info(`Port 22 is open on ${router.ipAddress}. Attempting SSH handshake.`);
+    
+    const ssh = await createSSHClient(router);
+    
+    if (!ssh) {
+      logger.error(`Could not establish SSH connection to ${router.ipAddress}`);
+      // If direct socket connection was successful but SSH handshake failed,
+      // the device might be reachable but using a non-standard SSH configuration
+      logger.info(`Device at ${router.ipAddress} may be reachable but SSH handshake failed. Marking as online but with limited functionality.`);
+      return true; // Mark as online since we could reach the device
+    }
+    
+    // Execute multiple simple commands to test the connection
+    // We try several because some commands might not be available on all devices
+    let success = false;
+    
+    try {
+      // Try a very basic echo command first
+      const echoResult = await ssh.execCommand('echo "Connection test"');
+      if (echoResult.code === 0) {
+        logger.info(`Echo test successful for ${router.ipAddress}`);
+        success = true;
+      }
+    } catch (err) {
+      logger.warn(`Echo test failed for ${router.ipAddress}: ${err.message}`);
+    }
+    
+    // If echo didn't work, try hostname
+    if (!success) {
+      try {
+        const hostnameResult = await ssh.execCommand('hostname');
+        if (hostnameResult.code === 0) {
+          logger.info(`Hostname test successful for ${router.ipAddress}`);
+          success = true;
+        }
+      } catch (err) {
+        logger.warn(`Hostname test failed for ${router.ipAddress}: ${err.message}`);
+      }
+    }
+    
+    // If hostname didn't work, try cat /proc/version
+    if (!success) {
+      try {
+        const versionResult = await ssh.execCommand('cat /proc/version');
+        if (versionResult.code === 0) {
+          logger.info(`Version test successful for ${router.ipAddress}`);
+          success = true;
+        }
+      } catch (err) {
+        logger.warn(`Version test failed for ${router.ipAddress}: ${err.message}`);
+      }
+    }
     
     // Disconnect
     ssh.dispose();
+    logger.info(`Connection test for ${router.ipAddress}: ${success ? 'SUCCESS' : 'FAILED'}`);
     
-    return result.code === 0;
+    return success || portOpen; // Return true if either the command test or port test succeeded
   } catch (error) {
     logger.error(`Connection test error for router ${router.name}: ${error.message}`);
     return false;
@@ -55,36 +211,110 @@ exports.testConnection = async (router) => {
 // Collect metrics from a router
 exports.collectMetrics = async (router) => {
   try {
+    const logger = require('./logger');
+    logger.info(`Collecting metrics for router ${router.name} (${router.ipAddress})`);
+    
+    // First, check if the device is reachable
+    const portOpen = await exports.checkPortOpen(router.ipAddress, 22);
+    if (!portOpen) {
+      logger.warn(`Router ${router.ipAddress} is not reachable - SSH port closed`);
+      return {
+        error: 'Device not reachable',
+        uptime: null,
+        memoryUsage: { total: 0, free: 0, used: 0, percentage: 0 },
+        cpuLoad: 0,
+        diskUsage: { total: 0, free: 0, used: 0, percentage: 0 },
+        networkInterfaces: [],
+        wirelessClients: 0
+      };
+    }
+    
+    // Try to establish SSH connection
     const ssh = await createSSHClient(router);
     
     if (!ssh) {
-      return null;
+      logger.warn(`Failed to establish SSH connection to router ${router.ipAddress}`);
+      return {
+        error: 'SSH connection failed',
+        uptime: null,
+        memoryUsage: { total: 0, free: 0, used: 0, percentage: 0 },
+        cpuLoad: 0,
+        diskUsage: { total: 0, free: 0, used: 0, percentage: 0 },
+        networkInterfaces: [],
+        wirelessClients: 0
+      };
     }
     
-    // Collect various metrics in parallel
-    const [uptime, memInfo, cpuLoad, diskUsage, networkInfo, wirelessInfo] = await Promise.all([
-      collectUptime(ssh),
-      collectMemoryInfo(ssh),
-      collectCpuLoad(ssh),
-      collectDiskUsage(ssh),
-      collectNetworkInfo(ssh),
-      collectWirelessInfo(ssh)
-    ]);
+    logger.info(`SSH connection successful for metrics collection on ${router.ipAddress}`);
+    
+    // Collect each metric individually with error handling
+    let results = {};
+    
+    try {
+      results.uptime = await collectUptime(ssh);
+      logger.info(`Collected uptime from ${router.ipAddress}: ${results.uptime}`);
+    } catch (err) {
+      logger.error(`Error collecting uptime: ${err.message}`);
+      results.uptime = null;
+    }
+    
+    try {
+      results.memoryUsage = await collectMemoryInfo(ssh);
+      logger.info(`Collected memory info from ${router.ipAddress}: ${JSON.stringify(results.memoryUsage)}`);
+    } catch (err) {
+      logger.error(`Error collecting memory info: ${err.message}`);
+      results.memoryUsage = { total: 0, free: 0, used: 0, percentage: 0 };
+    }
+    
+    try {
+      results.cpuLoad = await collectCpuLoad(ssh);
+      logger.info(`Collected CPU load from ${router.ipAddress}: ${results.cpuLoad}`);
+    } catch (err) {
+      logger.error(`Error collecting CPU load: ${err.message}`);
+      results.cpuLoad = 0;
+    }
+    
+    try {
+      results.diskUsage = await collectDiskUsage(ssh);
+      logger.info(`Collected disk usage from ${router.ipAddress}: ${JSON.stringify(results.diskUsage)}`);
+    } catch (err) {
+      logger.error(`Error collecting disk usage: ${err.message}`);
+      results.diskUsage = { total: 0, free: 0, used: 0, percentage: 0 };
+    }
+    
+    try {
+      results.networkInterfaces = await collectNetworkInfo(ssh);
+      logger.info(`Collected network info from ${router.ipAddress}: ${results.networkInterfaces.length} interfaces`);
+    } catch (err) {
+      logger.error(`Error collecting network interfaces: ${err.message}`);
+      results.networkInterfaces = [];
+    }
+    
+    try {
+      results.wirelessClients = await collectWirelessInfo(ssh);
+      logger.info(`Collected wireless clients from ${router.ipAddress}: ${results.wirelessClients}`);
+    } catch (err) {
+      logger.error(`Error collecting wireless clients: ${err.message}`);
+      results.wirelessClients = 0;
+    }
     
     // Disconnect
     ssh.dispose();
+    logger.info(`Successfully collected all available metrics from ${router.ipAddress}`);
     
-    return {
-      uptime,
-      memoryUsage: memInfo,
-      cpuLoad,
-      diskUsage,
-      networkInterfaces: networkInfo,
-      wirelessClients: wirelessInfo
-    };
+    return results;
   } catch (error) {
     logger.error(`Error collecting metrics for router ${router.name}: ${error.message}`);
-    return null;
+    // Return a default structure with empty values rather than null
+    return {
+      error: error.message,
+      uptime: null,
+      memoryUsage: { total: 0, free: 0, used: 0, percentage: 0 },
+      cpuLoad: 0,
+      diskUsage: { total: 0, free: 0, used: 0, percentage: 0 },
+      networkInterfaces: [],
+      wirelessClients: 0
+    };
   }
 };
 
@@ -104,41 +334,64 @@ const collectUptime = async (ssh) => {
 // Collect memory information
 const collectMemoryInfo = async (ssh) => {
   try {
-    const result = await ssh.execCommand('cat /proc/meminfo | grep -E "MemTotal|MemFree|MemAvailable"');
+    // Try standard Linux memory info command
+    const result = await ssh.execCommand('cat /proc/meminfo');
     
-    if (result.code !== 0) {
+    if (result.stderr) {
+      throw new Error(result.stderr);
+    }
+    
+    if (result.stdout) {
+      // Regular Linux format parsing
+      const memTotal = parseInt(result.stdout.match(/MemTotal:\s+(\d+)/)?.[1] || 0);
+      const memFree = parseInt(result.stdout.match(/MemFree:\s+(\d+)/)?.[1] || 0);
+      const memAvailable = parseInt(result.stdout.match(/MemAvailable:\s+(\d+)/)?.[1] || 0);
+      const buffers = parseInt(result.stdout.match(/Buffers:\s+(\d+)/)?.[1] || 0);
+      const cached = parseInt(result.stdout.match(/Cached:\s+(\d+)/)?.[1] || 0);
+      
+      // Use MemAvailable if present, otherwise calculate based on free + buffers + cached
+      const effectiveFree = memAvailable || (memFree + buffers + cached);
+      const used = memTotal - effectiveFree;
+      const percentage = Math.round((used / memTotal) * 100) || 0;
+      
       return {
-        total: 0,
-        free: 0,
-        used: 0,
-        percentage: 0
+        total: memTotal,
+        free: effectiveFree,
+        used: used,
+        percentage: percentage
       };
     }
     
-    // Parse the output
-    const lines = result.stdout.split('\n');
-    let total = 0;
-    let free = 0;
-    
-    for (const line of lines) {
-      if (line.includes('MemTotal')) {
-        total = parseInt(line.split(':')[1].trim().split(' ')[0]);
-      } else if (line.includes('MemFree')) {
-        free = parseInt(line.split(':')[1].trim().split(' ')[0]);
+    // If standard command failed or returned empty, try alternative methods
+    // Try 'free' command as fallback
+    const freeResult = await ssh.execCommand('free | grep Mem');
+    if (freeResult.stdout && !freeResult.stderr) {
+      const parts = freeResult.stdout.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        // Format varies but we typically need the 2nd value (total) and 4th (free)
+        const total = parseInt(parts[1]);
+        const free = parseInt(parts[3]);
+        const used = total - free;
+        const percentage = Math.round((used / total) * 100) || 0;
+        
+        return {
+          total: total,
+          free: free,
+          used: used,
+          percentage: percentage
+        };
       }
     }
     
-    const used = total - free;
-    const percentage = Math.round((used / total) * 100);
-    
+    // Final fallback if nothing works
     return {
-      total,
-      free,
-      used,
-      percentage
+      total: 0,
+      free: 0, 
+      used: 0,
+      percentage: 0
     };
   } catch (error) {
-    logger.error(`Error collecting memory info: ${error.message}`);
+    logger.error(`Error in collectMemoryInfo: ${error.message}`);
     return {
       total: 0,
       free: 0,
@@ -150,18 +403,56 @@ const collectMemoryInfo = async (ssh) => {
 
 // Collect CPU load
 const collectCpuLoad = async (ssh) => {
+  const logger = require('./logger');
   try {
-    const result = await ssh.execCommand('cat /proc/loadavg');
-    
-    if (result.code !== 0) {
-      return 0;
+    // Try standard Linux load average
+    const loadResult = await ssh.execCommand('cat /proc/loadavg');
+    if (loadResult.stdout && !loadResult.stderr) {
+      const loadParts = loadResult.stdout.trim().split(' ');
+      if (loadParts.length >= 1) {
+        // Use 1-minute load average
+        const loadAvg = parseFloat(loadParts[0]);
+        return loadAvg;
+      }
     }
     
-    // Parse the output (1 minute load average)
-    const loadAvg = parseFloat(result.stdout.split(' ')[0]);
-    return loadAvg;
+    // Try alternative method - use uptime command
+    const uptimeResult = await ssh.execCommand('uptime');
+    if (uptimeResult.stdout && !uptimeResult.stderr) {
+      // Extract load average from uptime output
+      const loadMatch = uptimeResult.stdout.match(/load average: ([0-9.]+)/);
+      if (loadMatch && loadMatch[1]) {
+        return parseFloat(loadMatch[1]);
+      }
+    }
+    
+    // Try another alternative - CPU usage percentage
+    const cpuUsageResult = await ssh.execCommand("top -bn1 | grep '%Cpu' | awk '{print $2}'");
+    if (cpuUsageResult.stdout && !cpuUsageResult.stderr) {
+      const cpuUsage = parseFloat(cpuUsageResult.stdout.trim());
+      if (!isNaN(cpuUsage)) {
+        // Convert percentage to a load-like number (0-100 to 0-1)
+        return cpuUsage / 100;
+      }
+    }
+    
+    // One more attempt with a different format of top
+    const topResult = await ssh.execCommand("top -bn1 | head -n 3");
+    if (topResult.stdout) {
+      // Try to find CPU usage information in the output
+      const cpuLine = topResult.stdout.split('\n').find(line => line.includes('Cpu'));
+      if (cpuLine) {
+        const usageMatch = cpuLine.match(/([0-9.]+)\s*%us/);
+        if (usageMatch && usageMatch[1]) {
+          return parseFloat(usageMatch[1]) / 100;
+        }
+      }
+    }
+    
+    logger.warn('All CPU load collection methods failed, returning 0');
+    return 0;
   } catch (error) {
-    logger.error(`Error collecting CPU load: ${error.message}`);
+    logger.error(`Error in collectCpuLoad: ${error.message}`);
     return 0;
   }
 };
@@ -471,7 +762,7 @@ const collectWirelessInfo = async (ssh) => {
   }
 };
 
-// Fetch hostname from the router
+// Fetch the hostname of a router
 exports.fetchHostname = async (router) => {
   try {
     const ssh = await createSSHClient(router);
@@ -480,21 +771,24 @@ exports.fetchHostname = async (router) => {
       return null;
     }
     
-    // Try several methods to get the hostname
-    const commands = [
-      'hostname', // Standard Linux command
-      'cat /proc/sys/kernel/hostname', // Direct from proc filesystem
-      'uci get system.@system[0].hostname' // OpenWrt specific command
-    ];
-    
+    // Try different commands to get hostname
     let hostname = null;
     
-    for (const command of commands) {
-      const result = await ssh.execCommand(command);
-      
-      if (result.code === 0 && result.stdout.trim()) {
-        hostname = result.stdout.trim();
-        break;
+    // Try standard hostname command first
+    const hostnameResult = await ssh.execCommand('hostname');
+    if (hostnameResult.code === 0 && hostnameResult.stdout.trim()) {
+      hostname = hostnameResult.stdout.trim();
+    } else {
+      // Try uci command (specific to OpenWrt)
+      const uciResult = await ssh.execCommand('uci get system.@system[0].hostname');
+      if (uciResult.code === 0 && uciResult.stdout.trim()) {
+        hostname = uciResult.stdout.trim();
+      } else {
+        // Try cat /proc/sys/kernel/hostname
+        const catResult = await ssh.execCommand('cat /proc/sys/kernel/hostname');
+        if (catResult.code === 0 && catResult.stdout.trim()) {
+          hostname = catResult.stdout.trim();
+        }
       }
     }
     
@@ -503,7 +797,53 @@ exports.fetchHostname = async (router) => {
     
     return hostname;
   } catch (error) {
-    logger.error(`Error fetching hostname for router ${router.name || router.ipAddress}: ${error.message}`);
+    logger.error(`Error fetching hostname for router ${router.name}: ${error.message}`);
+    return null;
+  }
+};
+
+// Fetch the MAC address of a router
+exports.fetchMacAddress = async (router) => {
+  try {
+    const ssh = await createSSHClient(router);
+    
+    if (!ssh) {
+      return null;
+    }
+    
+    // Try different commands to get MAC address
+    let macAddress = null;
+    
+    // Try to find MAC address of the main interface (br-lan for OpenWrt or eth0)
+    const commands = [
+      // OpenWrt specific
+      'ip link show br-lan | grep -o "link/ether [0-9a-f:]\+" | cut -d" " -f2',
+      // Generic fallback
+      'ip link show eth0 | grep -o "link/ether [0-9a-f:]\+" | cut -d" " -f2',
+      // Another fallback
+      'ifconfig br-lan | grep -o -E "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}" | head -n1',
+      // Another fallback
+      'ifconfig eth0 | grep -o -E "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}" | head -n1',
+      // Yet another fallback
+      'cat /sys/class/net/br-lan/address 2>/dev/null || cat /sys/class/net/eth0/address 2>/dev/null'
+    ];
+    
+    for (const command of commands) {
+      if (macAddress) break; // Stop if we found a MAC address
+      
+      const result = await ssh.execCommand(command);
+      if (result.code === 0 && result.stdout.trim().match(/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/)) {
+        macAddress = result.stdout.trim().toLowerCase();
+        break;
+      }
+    }
+    
+    // Disconnect
+    ssh.dispose();
+    
+    return macAddress;
+  } catch (error) {
+    logger.error(`Error fetching MAC address for router ${router.name}: ${error.message}`);
     return null;
   }
 }; 

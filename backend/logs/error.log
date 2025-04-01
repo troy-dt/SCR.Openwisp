@@ -12,3 +12,115 @@
 [2025-03-31 03:45:40] ERROR: Database connection error: getaddrinfo ENOTFOUND db
 [2025-03-31 03:46:58] ERROR: Database connection error: getaddrinfo ENOTFOUND db
 [2025-03-31 03:50:00] ERROR: Error in scheduled metrics collection: relation "Routers" does not exist
+[2025-03-31 04:40:05] ERROR: SSH connection error for router Home: getaddrinfo EAI_AGAIN OpenWrt
+[2025-03-31 08:40:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 09:45:57] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 09:50:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 09:55:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 10:00:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 10:05:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 10:10:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 11:15:55] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 11:20:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 11:25:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 11:30:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 11:35:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 11:40:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 12:45:56] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 12:50:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 12:55:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 13:00:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 13:05:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 13:10:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 13:15:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 14:20:56] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 14:25:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 14:30:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 14:35:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 14:40:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 14:45:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 15:50:56] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 15:55:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 16:00:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 16:05:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 16:10:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 16:15:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 17:20:55] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 17:25:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 17:30:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 17:35:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 17:40:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 17:45:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 18:50:56] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 18:55:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 19:00:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 19:05:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 19:10:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 19:15:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 20:20:56] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 20:25:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 20:30:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 20:35:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 20:40:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 20:45:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 20:50:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 20:55:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 21:00:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 21:05:20] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-03-31 21:10:04] ERROR: SSH connection error for router Home: getaddrinfo ENOTFOUND OpenWrt
+[2025-03-31 21:15:03] ERROR: SSH connection error for router Home: getaddrinfo ENOTFOUND OpenWrt
+[2025-03-31 21:20:03] ERROR: SSH connection error for router Home: getaddrinfo ENOTFOUND OpenWrt
+[2025-03-31 21:25:03] ERROR: SSH connection error for router Home: getaddrinfo ENOTFOUND OpenWrt
+[2025-03-31 21:30:03] ERROR: SSH connection error for router Home: getaddrinfo ENOTFOUND OpenWrt
+[2025-04-01 00:05:17] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:05:37] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:05:45] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:05:51] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:05:58] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:06:04] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:06:57] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:07:03] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:10:41] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:11:13] ERROR: SSH connection error for router Home: Timed out while waiting for handshake
+[2025-04-01 00:22:16] ERROR: SSH connection setup error for 192.168.1.36: Invalid username
+[2025-04-01 00:25:41] ERROR: SSH connection setup error for 192.168.1.36: Invalid username
+[2025-04-01 00:26:16] ERROR: SSH connection setup error for 192.168.1.36: Invalid username
+[2025-04-01 00:27:54] ERROR: SSH connection setup error for 192.168.1.36: Invalid username
+[2025-04-01 00:28:25] ERROR: SSH connection setup error for 192.168.1.36: Invalid username
+[2025-04-01 00:28:53] ERROR: SSH connection error for router Home: getaddrinfo EAI_AGAIN OpenWrt
+[2025-04-01 00:29:02] ERROR: SSH connection error for router Home: getaddrinfo EAI_AGAIN OpenWrt
+[2025-04-01 00:29:08] ERROR: SSH connection error for router Home: getaddrinfo EAI_AGAIN OpenWrt
+[2025-04-01 00:29:25] ERROR: SSH connection error for router Home: getaddrinfo EAI_AGAIN OpenWrt
+[2025-04-01 00:29:44] ERROR: SSH connection error for router Azure - WARP: getaddrinfo EAI_AGAIN OpenWrt
+[2025-04-01 00:30:07] ERROR: SSH connection error for router Azure - WARP: getaddrinfo EAI_AGAIN OpenWrt
+[2025-04-01 00:30:11] ERROR: SSH connection setup error for 192.168.1.36: Invalid username
+[2025-04-01 00:30:35] ERROR: SSH connection error for router Azure - WARP: getaddrinfo EAI_AGAIN OpenWrt
+[2025-04-01 00:30:47] ERROR: SSH connection setup error for 192.168.1.36: Invalid username
+[2025-04-01 01:43:23] ERROR: SSH connection error for router Azure - WARP: getaddrinfo EAI_AGAIN OpenWrt
+[2025-04-01 01:44:25] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 01:44:25] ERROR: Could not establish SSH connection to 192.168.1.36
+[2025-04-01 01:44:26] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 01:44:26] ERROR: Could not establish SSH connection to 192.168.1.36
+[2025-04-01 01:45:00] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 01:45:00] ERROR: Could not establish SSH connection to 192.168.1.36
+[2025-04-01 02:07:21] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:07:21] ERROR: Could not establish SSH connection to 192.168.1.36
+[2025-04-01 02:07:24] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:07:25] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:07:28] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:07:31] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:07:31] ERROR: Could not establish SSH connection to 192.168.1.36
+[2025-04-01 02:09:49] ERROR: Error in collectMetrics: Router.findById is not a function
+[2025-04-01 02:09:52] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:09:52] ERROR: Could not establish SSH connection to 192.168.1.36
+[2025-04-01 02:09:55] ERROR: Error in collectMetrics: Router.findById is not a function
+[2025-04-01 02:09:56] ERROR: Error in collectMetrics: Router.findById is not a function
+[2025-04-01 02:10:01] ERROR: Error in collectMetrics: Router.findById is not a function
+[2025-04-01 02:10:02] ERROR: Error in collectMetrics: Router.findById is not a function
+[2025-04-01 02:11:09] ERROR: Router not found: undefined
+[2025-04-01 02:11:12] ERROR: Router not found: undefined
+[2025-04-01 02:12:48] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:13:00] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:13:00] ERROR: Could not establish SSH connection to 192.168.1.36
+[2025-04-01 02:13:07] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc
+[2025-04-01 02:14:00] ERROR: SSH connection error for router 192.168.1.36: Unsupported algorithm: blowfish-cbc

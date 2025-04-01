@@ -48,6 +48,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
       defaultValue: ''
     },
+    macAddress: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true
+    },
     monitoringEnabled: {
       type: DataTypes.BOOLEAN,
       defaultValue: true

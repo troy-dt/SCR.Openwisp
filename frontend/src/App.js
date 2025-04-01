@@ -13,6 +13,7 @@ import RouterDetail from './pages/RouterDetail';
 import AddRouter from './pages/AddRouter';
 import Settings from './pages/Settings';
 import Metrics from './pages/Metrics';
+import SubnetScanner from './pages/SubnetScanner';
 
 function App() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -44,6 +45,7 @@ function App() {
             <Route path="/routers" element={<RouterList />} />
             <Route path="/routers/:id" element={<RouterDetail />} />
             <Route path="/routers/add" element={<AddRouter />} />
+            <Route path="/scanner" element={<SubnetScanner />} />
             <Route path="/metrics" element={<Metrics />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
