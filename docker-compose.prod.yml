@@ -1,0 +1,35 @@
+services:
+  frontend:
+    image: d1g1talterrain/scr-mesh-frontend:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://backend:5000/api
+    depends_on:
+      - backend
+
+  backend:
+    image: d1g1talterrain/scr-mesh-backend:latest
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://postgres:${DB_PASSWORD:-postgres}@postgres:5432/openwisp
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:14
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=openwisp
+
+volumes:
+  postgres_data: 
