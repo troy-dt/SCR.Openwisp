@@ -313,6 +313,18 @@ const SubnetScanner = () => {
     setLoading(false);
     setScanStep('');
     
+    // Log detailed scan results for debugging
+    console.log('SCAN RESULTS DETAIL:', JSON.stringify(data, null, 2));
+    console.log('Devices found:', data.devices ? data.devices.length : 0);
+    if (data.devices && data.devices.length > 0) {
+      console.log('First device sample:', data.devices[0]);
+      console.log('SSH check status:', data.devices.map(d => ({
+        ip: d.ipAddress,
+        sshSuccess: d.sshSuccess,
+        isOpenWrt: d.isOpenWrt
+      })));
+    }
+    
     // Check if this is a partial result
     setIsPartialResult(!!data.partialResults || !!data.isPartialResult);
     

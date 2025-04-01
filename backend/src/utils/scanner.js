@@ -784,13 +784,13 @@ async function scanForOpenWrtDevices(subnet, username, password, activeIPs = [])
 async function quickCheckOpenWrtDevice(ip, username, password) {
   const logger = require('./logger');
   
-  // Try SSH connection with minimal settings
+  // Try SSH connection with improved settings but still keeping it quick
   const conn = new Client();
   
   return new Promise((resolve) => {
     let connectionFinished = false;
     
-    // Timeout for the entire connection process
+    // Timeout for the entire connection process - still quick but longer than before
     const timeout = setTimeout(() => {
       if (!connectionFinished) {
         connectionFinished = true;
@@ -801,13 +801,16 @@ async function quickCheckOpenWrtDevice(ip, username, password) {
         }
         resolve(null);
       }
-    }, 2500);
+    }, 3500); // Increased timeout slightly
     
     conn.on('ready', () => {
       if (connectionFinished) return;
       
-      // Simple command to check if OpenWrt
-      conn.exec('cat /etc/openwrt_release 2>/dev/null || hostname', (err, stream) => {
+      // Optimized command combining hostname check and OpenWrt verification
+      // Use a single command with multiple checks combined for speed
+      const cmd = "hostname; cat /etc/openwrt_release 2>/dev/null || cat /etc/os-release 2>/dev/null; ip link show | grep -E \"link/ether\" | head -1";
+      
+      conn.exec(cmd, (err, stream) => {
         if (err || connectionFinished) {
           clearTimeout(timeout);
           connectionFinished = true;
@@ -825,59 +828,42 @@ async function quickCheckOpenWrtDevice(ip, username, password) {
         stream.on('close', () => {
           if (connectionFinished) return;
           
-          // If we get here, it's likely an OpenWrt device
-          const isOpenWrt = data.toLowerCase().includes('openwrt') || 
-                          data.trim().length > 0;
+          clearTimeout(timeout);
+          connectionFinished = true;
+          conn.end();
           
+          // Process results - split by lines
+          const lines = data.split('\n').filter(line => line.trim().length > 0);
+          
+          // First line should be hostname if the command worked
+          const hostname = lines[0] ? lines[0].trim() : '';
+          
+          // Check if this mentions OpenWrt anywhere in the output
+          const isOpenWrt = data.toLowerCase().includes('openwrt') || 
+                           data.toLowerCase().includes('lede') ||
+                           data.includes('DISTRIB_') ||
+                           (hostname && hostname !== 'localhost');
+                          
           // If not OpenWrt, resolve with null
           if (!isOpenWrt) {
-            clearTimeout(timeout);
-            connectionFinished = true;
-            conn.end();
             resolve(null);
             return;
           }
           
-          // Get MAC address with a simpler command
-          conn.exec('ifconfig br-lan 2>/dev/null || ifconfig eth0 2>/dev/null', (err, macStream) => {
-            if (err || connectionFinished) {
-              clearTimeout(timeout);
-              connectionFinished = true;
-              conn.end();
-              
-              // We know it's OpenWrt but couldn't get MAC
-              resolve({
-                ipAddress: ip,
-                hostname: data.trim() || 'unknown',
-                isOpenWrt: true,
-                macAddress: null
-              });
-              return;
-            }
-            
-            let macData = '';
-            
-            macStream.on('data', (chunk) => {
-              macData += chunk.toString();
-            });
-            
-            macStream.on('close', () => {
-              clearTimeout(timeout);
-              connectionFinished = true;
-              conn.end();
-              
-              // Extract MAC address using regex
-              const macRegex = /([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/;
-              const macMatch = macData.match(macRegex);
-              const macAddress = macMatch ? macMatch[0].toLowerCase() : null;
-              
-              resolve({
-                ipAddress: ip,
-                hostname: data.trim() || 'unknown',
-                isOpenWrt: true,
-                macAddress: macAddress
-              });
-            });
+          // Extract MAC address using regex
+          const macRegex = /([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/;
+          const macMatch = data.match(macRegex);
+          const macAddress = macMatch ? macMatch[0].toLowerCase() : null;
+          
+          // Use the hostname we found, fallback to device-based name
+          const deviceHostname = hostname || `OpenWrt-${ip.split('.').pop()}`;
+          
+          resolve({
+            ipAddress: ip,
+            hostname: deviceHostname,
+            isOpenWrt: true,
+            macAddress: macAddress,
+            sshSuccess: true
           });
         });
       });
@@ -896,20 +882,31 @@ async function quickCheckOpenWrtDevice(ip, username, password) {
       }
     });
     
-    // Attempt connection with minimal options and very short timeout
+    // Attempt connection with improved options but still keeping it fast
     try {
       conn.connect({
         host: ip,
         port: 22,
         username: username,
         password: password,
-        readyTimeout: 1500,
+        readyTimeout: 3000,
         algorithms: {
-          kex: ['diffie-hellman-group1-sha1', 'diffie-hellman-group14-sha1'],
-          cipher: ['aes128-ctr', '3des-cbc']
+          kex: [
+            'diffie-hellman-group1-sha1',
+            'diffie-hellman-group14-sha1',
+            'diffie-hellman-group-exchange-sha1'
+          ],
+          cipher: [
+            'aes128-ctr',
+            '3des-cbc',
+            'aes128-cbc'
+          ],
+          serverHostKey: [
+            'ssh-rsa',
+            'ssh-dss'
+          ]
         },
-        tryKeyboard: false,
-        keepaliveInterval: 0
+        tryKeyboard: false
       });
     } catch (error) {
       if (!connectionFinished) {
@@ -1096,170 +1093,210 @@ async function extendedCheckOpenWrtDevice(ip, username, password) {
         logger.warn(`SSH connection timeout for ${ip} in extended check`);
         resolve(null);
       }
-    }, 4500); // Much longer timeout (4.5 seconds)
+    }, 8000); // Increased timeout to 8 seconds
     
     conn.on('ready', () => {
       if (connectionFinished) return;
+      logger.info(`SSH connection successful to ${ip} in extended check`);
       
-      logger.info(`SSH connection successful to ${ip}`);
+      // Try multiple hostname commands with fallbacks (similar to metrics collection)
+      const hostnameCommands = [
+        "cat /proc/sys/kernel/hostname",
+        "hostname",
+        "uci get system.@system[0].hostname",
+        "cat /etc/config/system | grep hostname | cut -d \\' -f 2",
+        "cat /etc/hostname"
+      ];
       
-      // Simple command to check if OpenWrt with longer timeout
-      conn.exec('cat /etc/openwrt_release 2>/dev/null || cat /proc/version || hostname', (err, stream) => {
-        if (err || connectionFinished) {
-          clearTimeout(timeout);
-          connectionFinished = true;
-          conn.end();
-          logger.warn(`Command execution error on ${ip}: ${err?.message || 'Unknown error'}`);
-          resolve(null);
+      // Keep track of current command being tried
+      let currentCommandIndex = 0;
+      let hostnameFound = false;
+      let hostname = '';
+      let isOpenWrt = false;
+      
+      // Function to try the next hostname command
+      const tryNextHostnameCommand = () => {
+        if (currentCommandIndex >= hostnameCommands.length || connectionFinished || hostnameFound) {
+          // Move to checking OpenWrt
+          checkIfOpenWrt();
           return;
         }
         
-        let data = '';
+        const cmd = hostnameCommands[currentCommandIndex];
+        currentCommandIndex++;
         
-        stream.on('data', (chunk) => {
-          data += chunk.toString();
-        });
+        logger.info(`Trying hostname command (${currentCommandIndex}/${hostnameCommands.length}): ${cmd}`);
         
-        stream.on('close', async () => {
-          if (connectionFinished) return;
-          
-          logger.info(`Got response from ${ip}: ${data.substring(0, 50)}...`);
-          
-          // Much broader check for OpenWrt or any Linux-based router
-          const isOpenWrt = data.toLowerCase().includes('openwrt') || 
-                          data.toLowerCase().includes('linux') ||
-                          data.toLowerCase().includes('root') ||
-                          data.trim().length > 0;
-          
-          // If not OpenWrt, resolve with null
-          if (!isOpenWrt) {
-            clearTimeout(timeout);
-            connectionFinished = true;
-            conn.end();
-            logger.warn(`${ip} does not appear to be an OpenWrt device`);
-            resolve(null);
+        conn.exec(cmd, (err, stream) => {
+          if (err || connectionFinished) {
+            logger.warn(`Hostname command ${currentCommandIndex} failed: ${err?.message || 'unknown error'}`);
+            tryNextHostnameCommand(); // Try next command
             return;
           }
           
-          // Try to get MAC address directly from interfaces
-          logger.info(`${ip} seems to be a valid device, getting MAC address from interfaces`);
+          let data = '';
           
-          try {
-            // Close this connection first
-            conn.end();
+          stream.on('data', (chunk) => {
+            data += chunk.toString();
+          });
+          
+          stream.on('close', () => {
+            if (connectionFinished) return;
             
-            // Get MAC address from interfaces with a new connection
-            const macResult = await getMACFromInterfaces(ip, username, password);
-            
-            if (macResult.success) {
-              // Successfully got MAC from interfaces
-              logger.info(`${ip} is OpenWrt with MAC ${macResult.mac}`);
-              clearTimeout(timeout);
-              connectionFinished = true;
-              
-              resolve({
-                ipAddress: ip,
-                hostname: data.trim() || 'unknown',
-                isOpenWrt: true,
-                macAddress: macResult.mac
-              });
+            const result = data.trim();
+            if (result && result.length > 0 && result !== 'localhost') {
+              hostnameFound = true;
+              hostname = result;
+              logger.info(`✓ Successfully got hostname from ${ip}: ${hostname}`);
+              // Move to checking OpenWrt
+              checkIfOpenWrt();
+            } else {
+              // Try next command
+              tryNextHostnameCommand();
+            }
+          });
+        });
+      };
+      
+      // Function to check if the device is OpenWrt
+      const checkIfOpenWrt = () => {
+        // Commands to check if OpenWrt
+        const openWrtCommands = [
+          'cat /etc/openwrt_release',
+          'cat /etc/os-release | grep -i openwrt',
+          'ubus call system board',
+          'uci show system.@system[0]'
+        ];
+        
+        let openWrtCommandIndex = 0;
+        
+        const tryNextOpenWrtCommand = () => {
+          if (openWrtCommandIndex >= openWrtCommands.length || connectionFinished) {
+            // We're done checking, get MAC address
+            getMacAddress();
+            return;
+          }
+          
+          const cmd = openWrtCommands[openWrtCommandIndex];
+          openWrtCommandIndex++;
+          
+          logger.info(`Trying OpenWrt check command (${openWrtCommandIndex}/${openWrtCommands.length}): ${cmd}`);
+          
+          conn.exec(cmd, (err, stream) => {
+            if (err || connectionFinished) {
+              tryNextOpenWrtCommand(); // Try next command
               return;
             }
-          } catch (error) {
-            logger.warn(`Error getting MAC address from interfaces: ${error.message}`);
-          }
-          
-          // Fallback to the old method if direct interface check fails
-          // Get MAC address with a simpler command
-          const newConn = new Client();
-          
-          // Connect again for the fallback method
-          try {
-            newConn.connect({
-              host: ip,
-              port: 22,
-              username: username,
-              password: password,
-              readyTimeout: 3000
+            
+            let data = '';
+            
+            stream.on('data', (chunk) => {
+              data += chunk.toString();
             });
             
-            newConn.on('ready', () => {
-              newConn.exec('ifconfig br-lan 2>/dev/null || ifconfig eth0 2>/dev/null || cat /sys/class/net/eth0/address 2>/dev/null', (err, macStream) => {
-                if (err) {
-                  clearTimeout(timeout);
-                  connectionFinished = true;
-                  newConn.end();
-                  
-                  // We know it's OpenWrt but couldn't get MAC
-                  logger.info(`${ip} is OpenWrt but couldn't get MAC address`);
-                  resolve({
-                    ipAddress: ip,
-                    hostname: data.trim() || 'unknown',
-                    isOpenWrt: true,
-                    macAddress: null
-                  });
-                  return;
-                }
-                
-                let macData = '';
-                
-                macStream.on('data', (chunk) => {
-                  macData += chunk.toString();
-                });
-                
-                macStream.on('close', () => {
-                  clearTimeout(timeout);
-                  connectionFinished = true;
-                  newConn.end();
-                  
-                  // Extract MAC address using regex
-                  const macRegex = /([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/;
-                  const macMatch = macData.match(macRegex);
-                  const macAddress = macMatch ? macMatch[0].toLowerCase() : null;
-                  
-                  logger.info(`Successfully identified OpenWrt device at ${ip}`);
-                  resolve({
-                    ipAddress: ip,
-                    hostname: data.trim() || 'unknown',
-                    isOpenWrt: true,
-                    macAddress: macAddress
-                  });
-                });
-              });
-            });
-            
-            newConn.on('error', () => {
-              clearTimeout(timeout);
-              connectionFinished = true;
+            stream.on('close', () => {
+              if (connectionFinished) return;
               
-              // We know it's OpenWrt but couldn't get MAC in second attempt
-              logger.info(`${ip} is OpenWrt but couldn't get MAC in second attempt`);
-              resolve({
-                ipAddress: ip,
-                hostname: data.trim() || 'unknown',
-                isOpenWrt: true,
-                macAddress: null
+              const result = data.toLowerCase();
+              if (result.includes('openwrt') || result.includes('lede') || 
+                  result.includes('distribution') || result.includes('release')) {
+                isOpenWrt = true;
+                logger.info(`✓ Confirmed device at ${ip} is running OpenWrt`);
+                // Move to getting MAC address
+                getMacAddress();
+              } else {
+                // Try next command
+                tryNextOpenWrtCommand();
+              }
+            });
+          });
+        };
+        
+        // Function to get the MAC address
+        const getMacAddress = () => {
+          const macCommands = [
+            "ip link show | grep -E \"link/ether\" | awk '{print $2}' | head -1",
+            "ifconfig | grep -E \"HWaddr|ether\" | head -1",
+            "cat /sys/class/net/br-lan/address 2>/dev/null || cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null"
+          ];
+          
+          let macCommandIndex = 0;
+          let macAddress = null;
+          
+          const tryNextMacCommand = () => {
+            if (macCommandIndex >= macCommands.length || connectionFinished) {
+              // We're done, return results
+              finishCheck();
+              return;
+            }
+            
+            const cmd = macCommands[macCommandIndex];
+            macCommandIndex++;
+            
+            logger.info(`Trying MAC address command (${macCommandIndex}/${macCommands.length}): ${cmd}`);
+            
+            conn.exec(cmd, (err, stream) => {
+              if (err || connectionFinished) {
+                tryNextMacCommand(); // Try next command
+                return;
+              }
+              
+              let data = '';
+              
+              stream.on('data', (chunk) => {
+                data += chunk.toString();
+              });
+              
+              stream.on('close', () => {
+                if (connectionFinished) return;
+                
+                // Extract MAC address using regex
+                const macRegex = /([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/;
+                const macMatch = data.match(macRegex);
+                
+                if (macMatch) {
+                  macAddress = macMatch[0].toLowerCase();
+                  logger.info(`✓ Successfully got MAC address from ${ip}: ${macAddress}`);
+                  finishCheck();
+                } else {
+                  // Try next command
+                  tryNextMacCommand();
+                }
               });
             });
-          } catch (connError) {
+          };
+          
+          // Function to finish and return results
+          const finishCheck = () => {
             clearTimeout(timeout);
             connectionFinished = true;
+            conn.end();
             
-            // We know it's OpenWrt but couldn't reconnect for MAC
-            logger.info(`${ip} is OpenWrt but couldn't reconnect for MAC`);
+            // Don't return null, but return with the best information we have
             resolve({
               ipAddress: ip,
-              hostname: data.trim() || 'unknown',
-              isOpenWrt: true,
-              macAddress: null
+              hostname: hostname || `OpenWrt-${ip.split('.').pop()}`,
+              isOpenWrt: isOpenWrt,
+              macAddress: macAddress,
+              sshSuccess: true
             });
-          }
-        });
-      });
+          };
+          
+          // Start MAC address check
+          tryNextMacCommand();
+        };
+        
+        // Start OpenWrt check
+        tryNextOpenWrtCommand();
+      };
+      
+      // Start hostname check
+      tryNextHostnameCommand();
     });
     
     conn.on('error', (err) => {
       if (!connectionFinished) {
+        logger.warn(`SSH connection error for ${ip}: ${err.message}`);
         clearTimeout(timeout);
         connectionFinished = true;
         try {
@@ -1267,25 +1304,34 @@ async function extendedCheckOpenWrtDevice(ip, username, password) {
         } catch (e) {
           // Ignore errors on cleanup
         }
-        logger.warn(`SSH connection error for ${ip}: ${err.message}`);
-        resolve(null);
+        
+        // Don't return null, still return a device with limited info
+        // This allows the router to be added even if SSH verification fails
+        resolve({
+          ipAddress: ip,
+          hostname: `OpenWrt-${ip.split('.').pop()}`,
+          isOpenWrt: true,
+          macAddress: null,
+          note: 'Device detected but SSH authentication failed. Credentials may be incorrect.',
+          sshSuccess: false
+        });
       }
     });
     
-    // Attempt connection with extended options and longer timeout
+    // Connect with more robust algorithm support
     try {
-      logger.info(`Attempting SSH connection to ${ip} with extended options`);
       conn.connect({
         host: ip,
         port: 22,
         username: username,
         password: password,
-        readyTimeout: 4000, // 4 seconds
+        readyTimeout: 6000, // Increased timeout
         algorithms: {
           kex: [
             'diffie-hellman-group1-sha1',
             'diffie-hellman-group14-sha1',
-            'diffie-hellman-group-exchange-sha1'
+            'diffie-hellman-group-exchange-sha1',
+            'diffie-hellman-group-exchange-sha256'
           ],
           cipher: [
             'aes128-ctr',
@@ -1299,14 +1345,22 @@ async function extendedCheckOpenWrtDevice(ip, username, password) {
           ]
         },
         tryKeyboard: true,
-        keepaliveInterval: 0
+        keepaliveInterval: 1000
       });
     } catch (error) {
       if (!connectionFinished) {
         clearTimeout(timeout);
         connectionFinished = true;
-        logger.error(`SSH connection setup error for ${ip}: ${error.message}`);
-        resolve(null);
+        
+        // Return with limited information but don't return null
+        resolve({
+          ipAddress: ip,
+          hostname: `OpenWrt-${ip.split('.').pop()}`,
+          isOpenWrt: true,
+          macAddress: null,
+          note: 'Device detected but SSH connection failed. Credentials may be incorrect.',
+          sshSuccess: false
+        });
       }
     }
   });
